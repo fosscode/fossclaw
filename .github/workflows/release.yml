@@ -93,7 +93,7 @@ jobs:
           shasum -a 256 *.zip > checksums.txt
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: fossclaw-${{ matrix.platform }}-${{ matrix.arch }}
           path: dist/*
