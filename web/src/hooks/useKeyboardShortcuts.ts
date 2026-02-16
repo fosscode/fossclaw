@@ -38,11 +38,12 @@ export function useKeyboardShortcuts(
 
         // Match the key combination
         const keyMatch = e.key.toLowerCase() === shortcut.key.toLowerCase();
-        const ctrlMatch = shortcut.ctrl ? e.ctrlKey || e.metaKey : !e.ctrlKey && !e.metaKey;
+        const ctrlMatch = shortcut.ctrl ? e.ctrlKey : !e.ctrlKey;
+        const metaMatch = shortcut.meta ? e.metaKey : !e.metaKey;
         const shiftMatch = shortcut.shift ? e.shiftKey : !e.shiftKey;
         const altMatch = shortcut.alt ? e.altKey : !e.altKey;
 
-        if (keyMatch && ctrlMatch && shiftMatch && altMatch) {
+        if (keyMatch && ctrlMatch && metaMatch && shiftMatch && altMatch) {
           e.preventDefault();
           shortcut.handler(e);
           return;
