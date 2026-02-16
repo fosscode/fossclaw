@@ -47,6 +47,8 @@ export function Sidebar() {
   const setCurrentSession = useStore((s) => s.setCurrentSession);
   const darkMode = useStore((s) => s.darkMode);
   const toggleDarkMode = useStore((s) => s.toggleDarkMode);
+  const coderMode = useStore((s) => s.coderMode);
+  const toggleCoderMode = useStore((s) => s.toggleCoderMode);
   const cliConnected = useStore((s) => s.cliConnected);
   const sessionStatus = useStore((s) => s.sessionStatus);
   const removeSession = useStore((s) => s.removeSession);
@@ -449,6 +451,19 @@ export function Sidebar() {
             </svg>
           )}
           <span>{darkMode ? "Light mode" : "Dark mode"}</span>
+        </button>
+        <button
+          onClick={toggleCoderMode}
+          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-sm transition-colors cursor-pointer ${
+            coderMode
+              ? "bg-cc-primary/10 text-cc-primary"
+              : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
+          }`}
+        >
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
+            <path d="M4 5h12M4 10h12M4 15h8" />
+          </svg>
+          <span>Coder View</span>
         </button>
       </div>
 

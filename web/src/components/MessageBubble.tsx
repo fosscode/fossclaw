@@ -3,6 +3,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ChatMessage, ContentBlock } from "../types.js";
 import { ToolBlock, getToolIcon, getToolLabel, getPreview, ToolIcon } from "./ToolBlock.js";
+import { useStore } from "../store.js";
 
 export function MessageBubble({ message }: { message: ChatMessage }) {
   if (message.role === "system") {
@@ -84,6 +85,7 @@ function groupContentBlocks(blocks: ContentBlock[]): GroupedBlock[] {
 
 function AssistantMessage({ message }: { message: ChatMessage }) {
   const blocks = message.contentBlocks || [];
+  const coderMode = useStore((s) => s.coderMode);
 
   const grouped = useMemo(() => groupContentBlocks(blocks), [blocks]);
 
@@ -104,15 +106,15 @@ function AssistantMessage({ message }: { message: ChatMessage }) {
       <div className="flex-1 min-w-0 space-y-3">
         {grouped.map((group, i) => {
           if (group.kind === "content") {
-            return <ContentBlockRenderer key={i} block={group.block} />;
+            return <ContentBlockRenderer key={i} block={group.block} defaultOpen={coderMode} />;
           }
           // Single tool_use renders as before
           if (group.items.length === 1) {
             const item = group.items[0];
-            return <ToolBlock key={i} name={item.name} input={item.input} toolUseId={item.id} />;
+            return <ToolBlock key={i} name={item.name} input={item.input} toolUseId={item.id} defaultOpen={coderMode} />;
           }
           // Grouped tool_uses
-          return <ToolGroupBlock key={i} name={group.name} items={group.items} />;
+          return <ToolGroupBlock key={i} name={group.name} items={group.items} defaultOpen={coderMode} />;
         })}
       </div>
     </div>
@@ -231,17 +233,17 @@ function MarkdownContent({ text }: { text: string }) {
   );
 }
 
-function ContentBlockRenderer({ block }: { block: ContentBlock }) {
+function ContentBlockRenderer({ block, defaultOpen = false }: { block: ContentBlock; defaultOpen?: boolean }) {
   if (block.type === "text") {
     return <MarkdownContent text={block.text} />;
   }
 
   if (block.type === "thinking") {
-    return <ThinkingBlock text={block.thinking} />;
+    return <ThinkingBlock text={block.thinking} defaultOpen={defaultOpen} />;
   }
 
   if (block.type === "tool_use") {
-    return <ToolBlock name={block.name} input={block.input} toolUseId={block.id} />;
+    return <ToolBlock name={block.name} input={block.input} toolUseId={block.id} defaultOpen={defaultOpen} />;
   }
 
   if (block.type === "tool_result") {
@@ -252,7 +254,7 @@ function ContentBlockRenderer({ block }: { block: ContentBlock }) {
         isError
           ? "bg-cc-error/5 border-cc-error/20 text-cc-error"
           : "bg-cc-card border-cc-border text-cc-muted"
-      } max-h-40 overflow-y-auto whitespace-pre-wrap`}>
+      } ${defaultOpen ? "" : "max-h-40"} overflow-y-auto whitespace-pre-wrap`}>
         {content}
       </div>
     );
@@ -261,8 +263,8 @@ function ContentBlockRenderer({ block }: { block: ContentBlock }) {
   return null;
 }
 
-function ToolGroupBlock({ name, items }: { name: string; items: ToolGroupItem[] }) {
-  const [open, setOpen] = useState(false);
+function ToolGroupBlock({ name, items, defaultOpen = false }: { name: string; items: ToolGroupItem[]; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
   const iconType = getToolIcon(name);
   const label = getToolLabel(name);
 
@@ -303,8 +305,8 @@ function ToolGroupBlock({ name, items }: { name: string; items: ToolGroupItem[] 
   );
 }
 
-function ThinkingBlock({ text }: { text: string }) {
-  const [open, setOpen] = useState(false);
+function ThinkingBlock({ text, defaultOpen = false }: { text: string; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
 
   return (
     <div className="border border-cc-border rounded-[10px] overflow-hidden">
@@ -324,7 +326,7 @@ function ThinkingBlock({ text }: { text: string }) {
       </button>
       {open && (
         <div className="px-3 pb-3 pt-0">
-          <pre className="text-xs text-cc-muted font-mono-code whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+          <pre className={`text-xs text-cc-muted font-mono-code whitespace-pre-wrap leading-relaxed ${defaultOpen ? "" : "max-h-60"} overflow-y-auto`}>
             {text}
           </pre>
         </div>

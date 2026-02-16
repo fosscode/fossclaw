@@ -33,12 +33,14 @@ export function ToolBlock({
   name,
   input,
   toolUseId,
+  defaultOpen = false,
 }: {
   name: string;
   input: Record<string, unknown>;
   toolUseId: string;
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const iconType = getToolIcon(name);
   const label = getToolLabel(name);
 
@@ -71,14 +73,14 @@ export function ToolBlock({
         <div className="px-3 pb-3 pt-0 border-t border-cc-border">
           <div className="mt-2">
             {name === "Bash" && typeof input.command === "string" ? (
-              <pre className="px-3 py-2 rounded-lg bg-cc-code-bg text-cc-code-fg text-[12px] font-mono-code leading-relaxed overflow-x-auto">
+              <pre className={`px-3 py-2 rounded-lg bg-cc-code-bg text-cc-code-fg text-[12px] font-mono-code leading-relaxed overflow-x-auto ${defaultOpen ? "" : "max-h-60 overflow-y-auto"}`}>
                 <span className="text-cc-muted select-none">$ </span>
                 {input.command}
               </pre>
             ) : name === "Edit" ? (
-              <EditToolDetail input={input} />
+              <EditToolDetail input={input} expanded={defaultOpen} />
             ) : name === "Write" ? (
-              <WriteToolDetail input={input} />
+              <WriteToolDetail input={input} expanded={defaultOpen} />
             ) : name === "Read" ? (
               <div className="text-xs text-cc-muted font-mono-code">
                 {String(input.file_path || input.path || "")}
@@ -95,10 +97,11 @@ export function ToolBlock({
   );
 }
 
-function EditToolDetail({ input }: { input: Record<string, unknown> }) {
+function EditToolDetail({ input, expanded = false }: { input: Record<string, unknown>; expanded?: boolean }) {
   const filePath = String(input.file_path || "");
   const oldStr = String(input.old_string || "");
   const newStr = String(input.new_string || "");
+  const maxHeightClass = expanded ? "" : "max-h-32";
 
   return (
     <div className="space-y-2">
@@ -106,7 +109,7 @@ function EditToolDetail({ input }: { input: Record<string, unknown> }) {
       {oldStr && (
         <div className="rounded-lg overflow-hidden border border-cc-border">
           <div className="px-2 py-1 bg-cc-error/5 text-[10px] text-cc-error font-mono-code">removed</div>
-          <pre className="px-3 py-2 bg-cc-code-bg text-cc-code-fg text-[11px] font-mono-code leading-relaxed overflow-x-auto max-h-32 overflow-y-auto">
+          <pre className={`px-3 py-2 bg-cc-code-bg text-cc-code-fg text-[11px] font-mono-code leading-relaxed overflow-x-auto ${maxHeightClass} overflow-y-auto`}>
             {oldStr}
           </pre>
         </div>
@@ -114,7 +117,7 @@ function EditToolDetail({ input }: { input: Record<string, unknown> }) {
       {newStr && (
         <div className="rounded-lg overflow-hidden border border-cc-border">
           <div className="px-2 py-1 bg-cc-success/5 text-[10px] text-cc-success font-mono-code">added</div>
-          <pre className="px-3 py-2 bg-cc-code-bg text-cc-code-fg text-[11px] font-mono-code leading-relaxed overflow-x-auto max-h-32 overflow-y-auto">
+          <pre className={`px-3 py-2 bg-cc-code-bg text-cc-code-fg text-[11px] font-mono-code leading-relaxed overflow-x-auto ${maxHeightClass} overflow-y-auto`}>
             {newStr}
           </pre>
         </div>
@@ -123,15 +126,16 @@ function EditToolDetail({ input }: { input: Record<string, unknown> }) {
   );
 }
 
-function WriteToolDetail({ input }: { input: Record<string, unknown> }) {
+function WriteToolDetail({ input, expanded = false }: { input: Record<string, unknown>; expanded?: boolean }) {
   const filePath = String(input.file_path || "");
   const content = String(input.content || "");
-  const preview = content.length > 500 ? content.slice(0, 500) + "..." : content;
+  const preview = expanded ? content : (content.length > 500 ? content.slice(0, 500) + "..." : content);
+  const maxHeightClass = expanded ? "" : "max-h-40";
 
   return (
     <div className="space-y-2">
       <div className="text-xs text-cc-muted font-mono-code">{filePath}</div>
-      <pre className="px-3 py-2 rounded-lg bg-cc-code-bg text-cc-code-fg text-[11px] font-mono-code leading-relaxed overflow-x-auto max-h-40 overflow-y-auto">
+      <pre className={`px-3 py-2 rounded-lg bg-cc-code-bg text-cc-code-fg text-[11px] font-mono-code leading-relaxed overflow-x-auto ${maxHeightClass} overflow-y-auto`}>
         {preview}
       </pre>
     </div>
