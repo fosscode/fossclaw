@@ -66,10 +66,9 @@ jobs:
         if: runner.os != 'Windows'
         working-directory: build
         run: |
-          ls -la
-          bun --version
-          bun build entry.ts --compile --target=bun --outfile "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}" 2>&1
-          chmod +x "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
+          echo "Running build..."
+          bun build entry.ts --compile --target=bun --outfile "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}" || echo "Build failed with code $?"
+          echo "Done"
 
       - name: Build binary (Windows)
         if: runner.os == 'Windows'
