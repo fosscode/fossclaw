@@ -62,8 +62,9 @@ export function HomePage() {
   const addRecentDir = useStore((s) => s.addRecentDir);
   const defaultModels = useStore((s) => s.defaultModels);
   const setDefaultModel = useStore((s) => s.setDefaultModel);
+  const homeProvider = useStore((s) => s.homeProvider);
   const [text, setText] = useState(prefilledText || "");
-  const [provider, setProvider] = useState<"claude" | "opencode">("claude");
+  const [provider, setProvider] = useState<"claude" | "opencode">(homeProvider);
   const [model, setModel] = useState(defaultModels.get("claude") || MODELS[0].value);
   const [ocModel, setOcModel] = useState(defaultModels.get("opencode") || "");
   const [ocModels, setOcModels] = useState<OpenCodeModel[]>([]);
@@ -107,6 +108,11 @@ export function HomePage() {
   useEffect(() => {
     textareaRef.current?.focus();
   }, []);
+
+  // Sync provider from store (when navigated from sidebar)
+  useEffect(() => {
+    setProvider(homeProvider);
+  }, [homeProvider]);
 
   // Keyboard shortcuts for provider and model selection
   useKeyboardShortcuts([

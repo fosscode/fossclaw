@@ -109,11 +109,11 @@ export function Sidebar() {
     }
   }
 
-  function handleNewSession() {
+  function handleNewSession(provider: "claude" | "opencode") {
     if (currentSessionId) {
       disconnectSession(currentSessionId);
     }
-    useStore.getState().newSession();
+    useStore.getState().newSession(provider);
     if (window.innerWidth < 768) {
       useStore.getState().setSidebarOpen(false);
     }
@@ -212,16 +212,29 @@ export function Sidebar() {
           </div>
         </div>
 
-        <button
-          onClick={handleNewSession}
-          aria-label="Create new session"
-          className="w-full py-2 px-3 text-sm font-medium rounded-[10px] bg-cc-primary hover:bg-cc-primary-hover text-white transition-colors duration-150 flex items-center justify-center gap-1.5 cursor-pointer"
-        >
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
-            <path d="M8 3v10M3 8h10" />
-          </svg>
-          New Session
-        </button>
+        <div className="space-y-2">
+          <button
+            onClick={() => handleNewSession("claude")}
+            aria-label="Create new Claude session"
+            className="w-full py-2 px-3 text-sm font-medium rounded-[10px] bg-cc-primary hover:bg-cc-primary-hover text-white transition-colors duration-150 flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+              <path d="M8 3v10M3 8h10" />
+            </svg>
+            Claude
+          </button>
+
+          <button
+            onClick={() => handleNewSession("opencode")}
+            aria-label="Create new OpenCode session"
+            className="w-full py-2 px-3 text-sm font-medium rounded-[10px] bg-cc-bg-secondary hover:bg-cc-border text-cc-text-primary transition-colors duration-150 flex items-center justify-center gap-1.5 cursor-pointer border border-cc-border"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+              <path d="M8 3v10M3 8h10" />
+            </svg>
+            OpenCode
+          </button>
+        </div>
 
       </div>
 

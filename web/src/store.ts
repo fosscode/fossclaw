@@ -62,6 +62,8 @@ interface AppState {
   showPlaybookManager: boolean;
   showKeyboardShortcuts: boolean;
   homeResetKey: number;
+  homeProvider: "claude" | "opencode";
+  coderMode: boolean;
   recentDirs: string[];
   defaultModels: Map<"claude" | "opencode", string>;
 
@@ -74,7 +76,8 @@ interface AppState {
   setTaskPanelOpen: (open: boolean) => void;
   setShowPlaybookManager: (open: boolean) => void;
   setShowKeyboardShortcuts: (open: boolean) => void;
-  newSession: () => void;
+  toggleCoderMode: () => void;
+  newSession: (provider?: "claude" | "opencode") => void;
 
   // Linear actions
   setSidebarTab: (tab: "sessions" | "linear") => void;
@@ -206,6 +209,8 @@ export const useStore = create<AppState>((set) => ({
   showPlaybookManager: false,
   showKeyboardShortcuts: false,
   homeResetKey: 0,
+  homeProvider: "claude",
+  coderMode: false,
   recentDirs: (() => {
     if (typeof window === "undefined") return [];
     try { return JSON.parse(localStorage.getItem("cc-recent-dirs") || "[]"); }
@@ -254,7 +259,12 @@ export const useStore = create<AppState>((set) => ({
   setTaskPanelOpen: (open) => set({ taskPanelOpen: open }),
   setShowPlaybookManager: (open) => set({ showPlaybookManager: open }),
   setShowKeyboardShortcuts: (open) => set({ showKeyboardShortcuts: open }),
-  newSession: () => set((s) => ({ currentSessionId: null, homeResetKey: s.homeResetKey + 1 })),
+  toggleCoderMode: () => set((s) => ({ coderMode: !s.coderMode })),
+  newSession: (provider?: "claude" | "opencode") => set((s) => ({ 
+    currentSessionId: null, 
+    homeResetKey: s.homeResetKey + 1,
+    homeProvider: provider ?? "claude",
+  })),
 
   // Load preferences from server (called on mount)
   loadPreferences: async () => {
