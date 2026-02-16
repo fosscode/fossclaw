@@ -124,5 +124,6 @@ jobs:
       - name: Build binary (Unix)
         working-directory: build
         run: |
-          bun build entry.ts --compile --target=bun --outfile "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
+          set -x
+          bun build entry.ts --compile --target=bun --outfile "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}" 2>&1
           ls -la ../dist/
