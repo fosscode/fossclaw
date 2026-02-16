@@ -89,7 +89,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           cd dist
-          tar -czf "fossclaw-v${{ steps.version.outputs.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz" .
+          tar --warning=no-file-changed -czf "fossclaw-v${{ steps.version.outputs.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz" .
           shasum -a 256 *.tar.gz > checksums.txt
 
       - name: Create archive (Windows)
