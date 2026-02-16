@@ -62,6 +62,10 @@ jobs:
           cp LICENSE build/
           cp README.md build/
 
+      - name: Install build dependencies
+        working-directory: build
+        run: bun install
+
       - name: Build binary (Unix)
         if: runner.os != 'Windows'
         working-directory: build
