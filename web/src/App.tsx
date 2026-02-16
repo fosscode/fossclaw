@@ -76,6 +76,15 @@ export default function App() {
     }
   }, [isAuthenticated]);
 
+  // Request notification permission on mount
+  useEffect(() => {
+    if (isAuthenticated) {
+      import("./utils/notifications.js").then(({ requestNotificationPermission }) => {
+        requestNotificationPermission();
+      });
+    }
+  }, [isAuthenticated]);
+
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
     // Remove all theme classes

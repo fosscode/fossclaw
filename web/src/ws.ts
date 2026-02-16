@@ -1,6 +1,7 @@
 import { useStore } from "./store.js";
 import type { BrowserIncomingMessage, BrowserOutgoingMessage, ContentBlock, ChatMessage, TaskItem } from "./types.js";
 import { generateUniqueSessionName } from "./utils/names.js";
+import { notifyJobComplete } from "./utils/notifications.js";
 
 const sockets = new Map<string, WebSocket>();
 const reconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -217,6 +218,11 @@ function handleMessage(sessionId: string, generation: number, event: MessageEven
       store.setStreaming(sessionId, null);
       store.setStreamingStats(sessionId, null);
       store.setSessionStatus(sessionId, "idle");
+      
+      const currentSessionId = store.currentSessionId;
+      const sessionName = store.sessionNames.get(sessionId) || sessionId;
+      notifyJobComplete(sessionName, sessionId, sessionId === currentSessionId);
+      
       if (r.is_error && r.errors?.length) {
         store.appendMessage(sessionId, {
           id: nextId(),
@@ -259,10 +265,17 @@ function handleMessage(sessionId: string, generation: number, event: MessageEven
     }
 
     case "status_change": {
+      const previousStatus = store.sessionStatus.get(sessionId);
       if (data.status === "compacting") {
         store.setSessionStatus(sessionId, "compacting");
       } else {
         store.setSessionStatus(sessionId, data.status);
+        
+        if (previousStatus === "running" && data.status === "idle") {
+          const currentSessionId = store.currentSessionId;
+          const sessionName = store.sessionNames.get(sessionId) || sessionId;
+          notifyJobComplete(sessionName, sessionId, sessionId === currentSessionId);
+        }
       }
       break;
     }
