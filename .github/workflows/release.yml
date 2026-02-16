@@ -73,6 +73,7 @@ jobs:
           process.env.__FOSSCLAW_PACKAGE_ROOT = import.meta.dir;
           import "./server/index.ts";
           "@ | Out-File -FilePath build/entry.ts -Encoding utf8
+          New-Item -ItemType Directory -Force -Path build/server | Out-Null
           Copy-Item -Path web/server/* -Destination build/server/ -Recurse
           Copy-Item -Path web/dist/* -Destination build/dist/ -Recurse
           Copy-Item -Path web/package.json -Destination build/
