@@ -77,8 +77,8 @@ jobs:
           Copy-Item -Path web/server/* -Destination build/server/ -Recurse
           Copy-Item -Path web/dist/* -Destination build/dist/ -Recurse
           Copy-Item -Path web/package.json -Destination build/
-          Copy-Item -Path LICENSE -Destination build/dist/
-          Copy-Item -Path README.md -Destination build/dist/
+          Copy-Item -Path LICENSE -Destination build/
+          Copy-Item -Path README.md -Destination build/
 
       - name: Install build dependencies
         working-directory: build
