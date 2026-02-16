@@ -16,7 +16,7 @@ import { WsBridge } from "../server/ws-bridge.js";
 
 /** Helper: create a session via REST and return the sessionId. */
 async function createSession(ctx: TestContext, options: Record<string, unknown> = {}): Promise<string> {
-  const res = await fetch(`${ctx.baseUrl}/api/sessions/create`, {
+  const res = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/create`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(options),
@@ -52,7 +52,7 @@ describe("E2E Session Persistence", () => {
       });
 
       // Verify session exists in REST API
-      const res = await fetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
       expect(res.status).toBe(200);
       const session = await res.json();
 
@@ -267,7 +267,7 @@ describe("E2E Session Persistence", () => {
       await ctx.launcher.kill(sessionId1);
 
       // List all sessions
-      const res = await fetch(`${ctx.baseUrl}/api/sessions`);
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/sessions`);
       const sessions = await res.json();
 
       expect(sessions).toBeArray();
@@ -488,13 +488,13 @@ describe("E2E Session Persistence", () => {
       await ctx.launcher.kill(sessionId);
 
       // Delete via REST API
-      const delRes = await fetch(`${ctx.baseUrl}/api/sessions/${sessionId}`, {
+      const delRes = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${sessionId}`, {
         method: "DELETE",
       });
       expect(delRes.status).toBe(200);
 
       // Verify session is gone
-      const getRes = await fetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
+      const getRes = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
       expect(getRes.status).toBe(404);
     });
 
@@ -508,7 +508,7 @@ describe("E2E Session Persistence", () => {
       await browser.waitForMessage("session_init");
 
       // Delete session
-      const delRes = await fetch(`${ctx.baseUrl}/api/sessions/${sessionId}`, {
+      const delRes = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${sessionId}`, {
         method: "DELETE",
       });
       expect(delRes.status).toBe(200);
@@ -533,7 +533,7 @@ describe("E2E Session Persistence", () => {
         sessionName: "My Custom Session",
       });
 
-      const res = await fetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
       const session = await res.json();
 
       expect(session.sessionName).toBe("My Custom Session");
@@ -542,14 +542,14 @@ describe("E2E Session Persistence", () => {
     test("can update session name via REST API", async () => {
       const sessionId = await createSession(ctx);
 
-      const updateRes = await fetch(`${ctx.baseUrl}/api/sessions/${sessionId}/name`, {
-        method: "PUT",
+      const updateRes = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${sessionId}/name`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: "Updated Name" }),
       });
       expect(updateRes.status).toBe(200);
 
-      const getRes = await fetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
+      const getRes = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
       const session = await getRes.json();
 
       expect(session.sessionName).toBe("Updated Name");

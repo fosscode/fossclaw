@@ -75,6 +75,7 @@ export class WsBridge {
   private externalHandlers = new Map<string, (msg: Record<string, unknown>) => void>();
   private store: SessionStore | null;
   private ollama: OllamaClient | null;
+  public onActivity: ((sessionId: string) => void) | null = null;
 
   constructor(store?: SessionStore, ollama?: OllamaClient) {
     this.store = store ?? null;
@@ -171,6 +172,9 @@ export class WsBridge {
     }).catch(() => {
       // Ignore errors
     });
+    if (this.onActivity) {
+      this.onActivity(sessionId);
+    }
   }
 
   // ── External handlers (for OpenCode bridge etc.) ────────────────────────
@@ -368,6 +372,12 @@ export class WsBridge {
       session.state.agents = init.agents ?? [];
       session.state.slash_commands = init.slash_commands ?? [];
       session.state.skills = init.skills ?? [];
+      if (init.context_used_percent !== undefined) {
+        session.state.context_used_percent = init.context_used_percent;
+      }
+      if (init.is_compacting !== undefined) {
+        session.state.is_compacting = init.is_compacting;
+      }
 
       this.broadcastToBrowsers(session, {
         type: "session_init",
@@ -408,8 +418,10 @@ export class WsBridge {
     session.state.total_cost_usd = msg.total_cost_usd;
     session.state.num_turns = msg.num_turns;
 
-    // Compute context usage from modelUsage
-    if (msg.modelUsage) {
+    // Check for direct context_used_percent first, then compute from modelUsage
+    if (msg.context_used_percent !== undefined) {
+      session.state.context_used_percent = msg.context_used_percent;
+    } else if (msg.modelUsage) {
       for (const usage of Object.values(msg.modelUsage)) {
         if (usage.contextWindow > 0) {
           session.state.context_used_percent = Math.round(

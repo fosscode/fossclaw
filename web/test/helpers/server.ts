@@ -51,6 +51,11 @@ export class MockCliLauncher {
     if (s && s.state === "starting") s.state = "connected";
   }
 
+  updateActivity(sessionId: string): void {
+    const s = this.sessions.get(sessionId);
+    if (s) s.lastActivityAt = Date.now();
+  }
+
   listSessions(): SdkSessionInfo[] {
     return Array.from(this.sessions.values());
   }
@@ -81,6 +86,12 @@ export function createTestServer(): TestContext {
   setAuthCredentials("testuser", "testpass");
   const bridge = new WsBridge();
   const launcher = new MockCliLauncher();
+
+  // Connect bridge activity updates to launcher
+  bridge.onActivity = (sessionId: string) => {
+    launcher.updateActivity(sessionId);
+  };
+
   const app = new Hono();
   app.use("/api/*", cors());
   app.route("/api", createRoutes(launcher as any, bridge, "/tmp"));

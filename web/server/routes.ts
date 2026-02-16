@@ -68,6 +68,9 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
         allowedTools: body.allowedTools,
         env: body.env,
       });
+      if (body.sessionName) {
+        session.sessionName = body.sessionName;
+      }
       return c.json(session);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -115,6 +118,12 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
     const session = await store?.load(id);
     if (session) {
       store?.saveMeta(id, { ...session.meta, sessionName: name });
+    }
+
+    // Also update launcher session if store not available
+    const launcherSession = launcher.getSession(id);
+    if (launcherSession) {
+      launcherSession.sessionName = name;
     }
 
     return c.json({ ok: true, sessionName: name });

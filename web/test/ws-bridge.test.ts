@@ -11,7 +11,7 @@ import { delay } from "./helpers/wait.js";
 
 /** Helper: create a session via REST and return the sessionId. */
 async function createSession(ctx: TestContext): Promise<string> {
-  const res = await fetch(`${ctx.baseUrl}/api/sessions/create`, {
+  const res = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/create`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({}),

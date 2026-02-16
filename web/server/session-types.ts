@@ -18,6 +18,8 @@ export interface CLISystemInitMessage {
   skills?: string[];
   output_style: string;
   uuid: string;
+  context_used_percent?: number;
+  is_compacting?: boolean;
 }
 
 export interface CLISystemStatusMessage {
@@ -77,6 +79,7 @@ export interface CLIResultMessage {
     maxOutputTokens: number;
     costUSD: number;
   }>;
+  context_used_percent?: number;
   uuid: string;
   session_id: string;
 }

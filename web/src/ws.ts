@@ -305,6 +305,7 @@ function handleMessage(sessionId: string, generation: number, event: MessageEven
     case "cli_disconnected": {
       store.setCliConnected(sessionId, false);
       store.setSessionStatus(sessionId, null);
+      store.setStreamingStats(sessionId, null);
       break;
     }
 

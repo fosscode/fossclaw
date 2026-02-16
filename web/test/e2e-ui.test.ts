@@ -14,7 +14,7 @@ import { delay } from "./helpers/wait.js";
 
 /** Helper: create a session via REST and return the sessionId. */
 async function createSession(ctx: TestContext, options: Record<string, unknown> = {}): Promise<string> {
-  const res = await fetch(`${ctx.baseUrl}/api/sessions/create`, {
+  const res = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/create`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(options),
@@ -48,7 +48,7 @@ describe("E2E UI Integration Tests", () => {
       expect(sessionId.length).toBeGreaterThan(0);
 
       // Verify session can be retrieved
-      const res = await fetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
       expect(res.status).toBe(200);
       const session = await res.json();
       expect(session.sessionId).toBe(sessionId);
@@ -489,7 +489,7 @@ describe("E2E UI Integration Tests", () => {
       const session2 = await createSession(ctx);
       const session3 = await createSession(ctx);
 
-      const res = await fetch(`${ctx.baseUrl}/api/sessions`);
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/sessions`);
       expect(res.status).toBe(200);
       const sessions = await res.json();
 
@@ -505,17 +505,17 @@ describe("E2E UI Integration Tests", () => {
       const session2 = await createSession(ctx);
 
       // Delete session1
-      const delRes = await fetch(`${ctx.baseUrl}/api/sessions/${session1}`, {
+      const delRes = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${session1}`, {
         method: "DELETE",
       });
       expect(delRes.status).toBe(200);
 
       // session1 should be gone
-      const get1 = await fetch(`${ctx.baseUrl}/api/sessions/${session1}`);
+      const get1 = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${session1}`);
       expect(get1.status).toBe(404);
 
       // session2 should still exist
-      const get2 = await fetch(`${ctx.baseUrl}/api/sessions/${session2}`);
+      const get2 = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${session2}`);
       expect(get2.status).toBe(200);
     });
   });
@@ -754,7 +754,7 @@ describe("E2E UI Integration Tests", () => {
         providerID: "openai",
       });
 
-      const res = await fetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
       const session = await res.json();
 
       // MockCliLauncher always creates "claude" sessions
@@ -762,7 +762,7 @@ describe("E2E UI Integration Tests", () => {
     });
 
     test("OpenCode models list endpoint works", async () => {
-      const res = await fetch(`${ctx.baseUrl}/api/opencode/models`);
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/opencode/models`);
 
       // May return 500 or 501 if OPENCODE_PORT not configured, which is fine
       if (res.status === 200) {
@@ -778,7 +778,7 @@ describe("E2E UI Integration Tests", () => {
 
   describe("Filesystem API", () => {
     test("can list directories", async () => {
-      const res = await fetch(`${ctx.baseUrl}/api/fs/list?path=/tmp`);
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/fs/list?path=/tmp`);
       expect(res.status).toBe(200);
 
       const data = await res.json();
@@ -788,7 +788,7 @@ describe("E2E UI Integration Tests", () => {
     });
 
     test("invalid directory returns 400", async () => {
-      const res = await fetch(`${ctx.baseUrl}/api/fs/list?path=/this/path/does/not/exist/999`);
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/fs/list?path=/this/path/does/not/exist/999`);
       expect(res.status).toBe(400);
 
       const data = await res.json();
@@ -796,7 +796,7 @@ describe("E2E UI Integration Tests", () => {
     });
 
     test("home directory endpoint works", async () => {
-      const res = await fetch(`${ctx.baseUrl}/api/fs/home`);
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/fs/home`);
       expect(res.status).toBe(200);
 
       const data = await res.json();
@@ -819,7 +819,7 @@ describe("E2E UI Integration Tests", () => {
 
       expect(sessionId).toBeString();
 
-      const res = await fetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
       const session = await res.json();
       expect(session.cwd).toBe("/home/test");
     });

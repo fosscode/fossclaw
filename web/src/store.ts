@@ -264,6 +264,7 @@ export const useStore = create<AppState>((set) => ({
     currentSessionId: null, 
     homeResetKey: s.homeResetKey + 1,
     homeProvider: provider ?? "claude",
+    coderMode: provider === "opencode" ? true : s.coderMode,
   })),
 
   // Load preferences from server (called on mount)
