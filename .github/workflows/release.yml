@@ -53,7 +53,7 @@ jobs:
           cat > build/entry.ts << 'EOF'
           #!/usr/bin/env bun
           process.env.__FOSSCLAW_PACKAGE_ROOT = import.meta.dir;
-          import "./web/server/index.ts";
+          import "./server/index.ts";
           EOF
           # Copy files
           cp -r web/server build/
