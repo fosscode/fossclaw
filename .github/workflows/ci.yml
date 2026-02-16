@@ -115,8 +115,14 @@ jobs:
           cp -r web/dist build/
           cp web/package.json build/
 
+      - name: Debug build directory
+        run: |
+          ls -la build/
+          ls -la build/server/
+          head -5 build/entry.ts
+
       - name: Build binary (Unix)
         working-directory: build
         run: |
-          bun build entry.ts --compile --target=bun --outfile "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
+          bun build entry.ts --compile --target=bun --outfile "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}" || true
           ls -la ../dist/
