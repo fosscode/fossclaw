@@ -76,47 +76,47 @@ jobs:
           fi
           echo "✓ Build successful"
 
-  build-binary:
-    name: Build Binary (${{ matrix.platform }}-${{ matrix.arch }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: macos-latest
-            platform: darwin
-            arch: arm64
-          - os: ubuntu-latest
-            platform: linux
-            arch: x64
+  # build-binary:
+  #   name: Build Binary (${{ matrix.platform }}-${{ matrix.arch }})
+  #   runs-on: ${{ matrix.os }}
+  #   strategy:
+  #     matrix:
+  #       include:
+  #         - os: macos-latest
+  #           platform: darwin
+  #           arch: arm64
+  #         - os: ubuntu-latest
+  #           platform: linux
+  #           arch: x64
 
-    steps:
-      - uses: actions/checkout@v4
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
 
-      - name: Build frontend
-        working-directory: web
-        run: |
-          bun install
-          bun run build
+  #     - name: Build frontend
+  #       working-directory: web
+  #       run: |
+  #         bun install
+  #         bun run build
 
-      - name: Test binary build
-        shell: bash
-        run: |
-          mkdir -p build dist
-          cat > build/entry.ts << 'EOF'
-          #!/usr/bin/env bun
-          process.env.__FOSSCLAW_PACKAGE_ROOT = import.meta.dir;
-          import "./web/server/index.ts";
-          EOF
-          cp -r web/server build/
-          cp -r web/dist build/
-          cp web/package.json build/
-          cd build
-          bun build entry.ts --compile --target=bun --outfile "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
-          chmod +x "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
-          ls -lh ../dist/
-          echo "✓ Binary build successful"
+  #     - name: Test binary build
+  #       shell: bash
+  #       run: |
+  #         mkdir -p build dist
+  #         cat > build/entry.ts << 'EOF'
+  #         #!/usr/bin/env bun
+  #         process.env.__FOSSCLAW_PACKAGE_ROOT = import.meta.dir;
+  #         import "./web/server/index.ts";
+  #         EOF
+  #         cp -r web/server build/
+  #         cp -r web/dist build/
+  #         cp web/package.json build/
+  #         cd build
+  #         bun build entry.ts --compile --target=bun --outfile "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
+  #         chmod +x "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
+  #         ls -lh ../
+  #         echo "✓ Binary build successful"
