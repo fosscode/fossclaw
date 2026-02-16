@@ -140,9 +140,9 @@ jobs:
         with:
           draft: false
           files: |
-            artifacts/fossclaw-darwin-arm64/*
-            artifacts/fossclaw-linux-x64/*
-            artifacts/fossclaw-windows-x64/*
+            artifacts/fossclaw-darwin-arm64/fossclaw-v*
+            artifacts/fossclaw-linux-x64/fossclaw-v*
+            artifacts/fossclaw-windows-x64/fossclaw-v*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
