@@ -283,7 +283,10 @@ export const useStore = create<AppState>((set) => ({
         localStorage.setItem("cc-recent-dirs", JSON.stringify(prefs.recentDirs));
       }
       if (prefs.defaultModels && typeof prefs.defaultModels === "object") {
-        updates.defaultModels = new Map(Object.entries(prefs.defaultModels));
+        const validEntries = Object.entries(prefs.defaultModels).filter(
+          ([key]) => key === "claude" || key === "opencode"
+        );
+        updates.defaultModels = new Map(validEntries as ["claude" | "opencode", string][]);
         localStorage.setItem("cc-default-models", JSON.stringify(prefs.defaultModels));
       }
       set(updates);

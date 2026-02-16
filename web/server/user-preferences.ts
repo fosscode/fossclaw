@@ -38,7 +38,8 @@ export class UserPreferencesStore {
 
   async load(): Promise<UserPreferences> {
     if (this.cached) {
-      return { ...this.cached, ...(this.pending || {}) };
+      const merged = { ...this.cached, ...(this.pending || {}) };
+      return merged as UserPreferences;
     }
     try {
       const raw = await readFile(this.filePath, "utf-8");
@@ -46,7 +47,8 @@ export class UserPreferencesStore {
     } catch {
       this.cached = { ...DEFAULTS };
     }
-    return { ...this.cached, ...(this.pending || {}) };
+    const merged = { ...this.cached, ...(this.pending || {}) };
+    return merged as UserPreferences;
   }
 
   save(updates: Partial<UserPreferences>): void {

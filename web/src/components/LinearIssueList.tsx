@@ -33,7 +33,7 @@ export function LinearIssueList() {
   const issues = useStore((s) => s.linearIssues);
   const loading = useStore((s) => s.linearLoading);
   const error = useStore((s) => s.linearError);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const filterMenuRef = useRef<HTMLDivElement>(null);
   const filterBtnRef = useRef<HTMLButtonElement>(null);
   const [filterPos, setFilterPos] = useState<{ top: number; left: number } | null>(null);

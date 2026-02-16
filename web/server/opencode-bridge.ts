@@ -1,5 +1,6 @@
 import type { Subprocess } from "bun";
 import type { WsBridge } from "./ws-bridge.js";
+import type { ContentBlock } from "./session-types.js";
 
 /**
  * Bridge between FossClaw and an OpenCode server.
@@ -147,7 +148,7 @@ export class OpenCodeBridge {
 
     // Register as external handler in WsBridge
     if (this.wsBridge) {
-      this.wsBridge.registerExternalHandler(fossclawId, (msg) => this.handleBrowserMessage(fossclawId, msg));
+      this.wsBridge.registerExternalHandler(fossclawId, (msg) => this.handleBrowserMessage(fossclawId, msg as { type: string; [key: string]: unknown }));
 
       // Inject a synthetic session_init so the browser marks this session as connected
       this.wsBridge.injectToBrowsers(fossclawId, {
@@ -155,9 +156,20 @@ export class OpenCodeBridge {
         session: {
           session_id: fossclawId,
           model: model || "unknown",
-          provider: "opencode",
+          cwd: cwd || "",
+          tools: [],
+          permissionMode: "ask",
+          claude_code_version: "",
+          mcp_servers: [],
+          agents: [],
+          slash_commands: [],
+          skills: [],
+          total_cost_usd: 0,
+          num_turns: 0,
+          context_used_percent: 0,
+          is_compacting: false,
         },
-      });
+      } as import("./session-types.js").BrowserIncomingMessage);
     }
 
     return mapping;
@@ -189,6 +201,7 @@ export class OpenCodeBridge {
       this.wsBridge.injectToBrowsers(fossclawId, {
         type: "stream_event",
         event: { type: "message_start" },
+        parent_tool_use_id: null,
       });
     }
 
@@ -461,6 +474,7 @@ export class OpenCodeBridge {
               type: "content_block_delta",
               delta: { type: "text_delta", text: delta },
             },
+            parent_tool_use_id: null,
           });
         } else if (part?.type === "tool") {
           // OpenCode tool call: part.tool = tool name, part.state = { status, input, output }
@@ -520,11 +534,22 @@ export class OpenCodeBridge {
           type: "result",
           data: {
             type: "result",
+            subtype: "success",
             result: "",
             total_cost_usd: 0,
             num_turns: 1,
             is_error: false,
             session_id: sessionId,
+            uuid: crypto.randomUUID(),
+            duration_ms: 0,
+            duration_api_ms: 0,
+            stop_reason: "stop",
+            usage: {
+              input_tokens: 0,
+              output_tokens: 0,
+              cache_creation_input_tokens: 0,
+              cache_read_input_tokens: 0,
+            },
           },
         });
         break;
@@ -568,7 +593,7 @@ export class OpenCodeBridge {
       };
 
       // Build content blocks from all parts
-      const contentBlocks: Record<string, unknown>[] = [];
+      const contentBlocks: ContentBlock[] = [];
       let fullText = "";
 
       for (const part of data.parts) {
@@ -582,7 +607,7 @@ export class OpenCodeBridge {
             type: "tool_use",
             id: callId,
             name: part.tool,
-            input: part.state?.input || {},
+            input: (part.state?.input as Record<string, unknown>) || {},
           });
           // Tool result → tool_result block
           if (part.state?.status === "completed" || part.state?.output) {
@@ -614,12 +639,20 @@ export class OpenCodeBridge {
         this.wsBridge.injectToBrowsers(fossclawId, {
           type: "assistant",
           message: {
+            type: "message",
             id: msgId,
             role: "assistant",
             content: contentBlocks,
             model: (msgInfo.modelID as string) || (info.modelID as string) || "",
             stop_reason: hasToolUse ? "tool_use" : "stop",
+            usage: {
+              input_tokens: 0,
+              output_tokens: 0,
+              cache_creation_input_tokens: 0,
+              cache_read_input_tokens: 0,
+            },
           },
+          parent_tool_use_id: null,
         });
 
       }
