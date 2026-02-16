@@ -113,11 +113,11 @@ jobs:
 
       - name: Create archive (Windows)
         if: runner.os == 'Windows'
-        shell: bash
+        shell: pwsh
         run: |
           cd dist
-          powershell -Command "Compress-Archive -Path 'fossclaw-*.exe' -DestinationPath 'fossclaw-v${{ steps.version.outputs.VERSION }}-windows-x64.zip'"
-          shasum -a 256 *.zip > checksums.txt
+          Compress-Archive -Path "fossclaw-*.exe" -DestinationPath "fossclaw-v${{ steps.version.outputs.VERSION }}-windows-x64.zip"
+          Get-ChildItem *.zip | ForEach-Object { (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash.ToLower() } > checksums.txt
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
