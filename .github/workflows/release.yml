@@ -1,0 +1,210 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          # macOS builds
+          - os: macos-latest
+            platform: darwin
+            arch: arm64
+          - os: macos-13
+            platform: darwin
+            arch: x64
+
+          # Linux builds
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+
+          # Windows build
+          - os: windows-latest
+            platform: windows
+            arch: x64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Get version from tag
+        id: version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build frontend
+        working-directory: web
+        run: |
+          bun install
+          bun run build
+
+      - name: Prepare build directory
+        shell: bash
+        run: |
+          mkdir -p build dist
+
+          # Create entry point
+          cat > build/entry.ts << 'EOF'
+          #!/usr/bin/env bun
+          process.env.__FOSSCLAW_PACKAGE_ROOT = import.meta.dir;
+          import "./web/server/index.ts";
+          EOF
+
+          # Copy files
+          cp -r web/server build/
+          cp -r web/dist build/
+          cp web/package.json build/
+          cp LICENSE build/
+          cp README.md build/
+
+      - name: Build binary (Unix)
+        if: runner.os != 'Windows'
+        working-directory: build
+        run: |
+          bun build entry.ts --compile --target=bun --outfile "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
+          chmod +x "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
+
+      - name: Build binary (Windows)
+        if: runner.os == 'Windows'
+        working-directory: build
+        shell: bash
+        run: |
+          bun build entry.ts --compile --target=bun --outfile "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}.exe"
+
+      - name: Create archive (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd dist
+          tar -czf "fossclaw-v${{ steps.version.outputs.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz" \
+            "fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
+          shasum -a 256 *.tar.gz > checksums.txt
+
+      - name: Create archive (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          cd dist
+          7z a "fossclaw-v${{ steps.version.outputs.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip" \
+            "fossclaw-${{ matrix.platform }}-${{ matrix.arch }}.exe"
+          sha256sum *.zip > checksums.txt
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fossclaw-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Consolidate artifacts
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec cp {} release/ \;
+
+          # Create combined checksums file
+          cd release
+          if command -v sha256sum &> /dev/null; then
+            sha256sum * > SHA256SUMS.txt
+          else
+            shasum -a 256 * > SHA256SUMS.txt
+          fi
+
+      - name: Get version and create release notes
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+          # Extract changelog for this version if exists
+          if [ -f CHANGELOG.md ]; then
+            sed -n "/## \[${VERSION}\]/,/## \[/p" CHANGELOG.md | sed '$ d' > release_notes.md
+          else
+            echo "Release $VERSION" > release_notes.md
+          fi
+
+          # Add installation instructions
+          cat >> release_notes.md << 'EOF'
+
+          ## Installation
+
+          Download the appropriate binary for your platform:
+
+          **macOS (Apple Silicon)**
+          ```bash
+          curl -L https://github.com/${{ github.repository }}/releases/download/v$VERSION/fossclaw-v$VERSION-darwin-arm64.tar.gz | tar xz
+          ./fossclaw-darwin-arm64
+          ```
+
+          **macOS (Intel)**
+          ```bash
+          curl -L https://github.com/${{ github.repository }}/releases/download/v$VERSION/fossclaw-v$VERSION-darwin-x64.tar.gz | tar xz
+          ./fossclaw-darwin-x64
+          ```
+
+          **Linux (x64)**
+          ```bash
+          curl -L https://github.com/${{ github.repository }}/releases/download/v$VERSION/fossclaw-v$VERSION-linux-x64.tar.gz | tar xz
+          ./fossclaw-linux-x64
+          ```
+
+          **Windows (x64)**
+          Download and extract: `fossclaw-v$VERSION-windows-x64.zip`
+
+          ## Configuration
+
+          Set environment variables before running:
+          ```bash
+          export PORT=3456
+          export FOSSCLAW_CWD=/your/working/directory
+          export FOSSCLAW_SESSION_DIR=~/.fossclaw/sessions
+          # Optional: enable auth
+          export FOSSCLAW_USER=admin
+          export FOSSCLAW_PASS=yourpassword
+          ```
+
+          See README.md for full configuration options.
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/*
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Output release info
+        run: |
+          echo "✅ Release created successfully!"
+          echo "Version: ${{ steps.version.outputs.VERSION }}"
+          echo "Artifacts:"
+          ls -lh release/

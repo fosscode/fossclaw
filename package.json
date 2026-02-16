@@ -1,0 +1,13 @@
+{
+  "name": "fossclaw",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Web UI for Claude Code agents — FossClaw",
+  "scripts": {
+    "dev": "cd web && bun run dev",
+    "build": "cd web && bun run build",
+    "start": "cd web && bun run start"
+  },
+  "author": "FossCode",
+  "license": "MIT"
+}

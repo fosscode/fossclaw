@@ -1,0 +1,173 @@
+@import "tailwindcss";
+
+@theme {
+  /* Light Mode (default) */
+  --color-cc-bg: #F5F5F0;
+  --color-cc-fg: #1a1a18;
+  --color-cc-card: #FFFFFF;
+  --color-cc-primary: #ae5630;
+  --color-cc-primary-hover: #c4643a;
+  --color-cc-user-bubble: #DDD9CE;
+  --color-cc-border: rgba(0,0,0,0.08);
+  --color-cc-muted: #B1ADA1;
+  --color-cc-sidebar: #EDEAE2;
+  --color-cc-input-bg: #FFFFFF;
+  --color-cc-code-bg: #1e1e1e;
+  --color-cc-code-fg: #d4d4d4;
+  --color-cc-hover: rgba(0,0,0,0.04);
+  --color-cc-active: rgba(0,0,0,0.07);
+  --color-cc-success: #2d7d46;
+  --color-cc-running: #2b6cb0;
+  --color-cc-error: #c53030;
+  --color-cc-warning: #b7791f;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* OLED Black theme - True black base */
+.dark {
+  --color-cc-bg: #000000;
+  --color-cc-fg: #f0f0f0;
+  --color-cc-card: #0a0a0a;
+  --color-cc-user-bubble: #151515;
+  --color-cc-border: rgba(255,255,255,0.06);
+  --color-cc-muted: #888888;
+  --color-cc-sidebar: #000000;
+  --color-cc-input-bg: #0a0a0a;
+  --color-cc-code-bg: #000000;
+  --color-cc-code-fg: #e0e0e0;
+  --color-cc-hover: rgba(255,255,255,0.03);
+  --color-cc-active: rgba(255,255,255,0.06);
+  --color-cc-success: #10b981;
+  --color-cc-running: #3b82f6;
+  --color-cc-error: #ef4444;
+  --color-cc-warning: #f59e0b;
+}
+
+/* Aurora theme - Cyan/Teal/Purple */
+.dark.theme-aurora {
+  --color-cc-primary: #06b6d4;
+  --color-cc-primary-hover: #22d3ee;
+  --color-cc-accent: #8b5cf6;
+  --color-cc-accent-2: #14b8a6;
+  --color-cc-success: #10b981;
+  --color-cc-running: #06b6d4;
+  --color-cc-error: #f43f5e;
+  --color-cc-warning: #f59e0b;
+}
+
+/* Ocean theme - Blue/Aqua */
+.dark.theme-ocean {
+  --color-cc-primary: #3b82f6;
+  --color-cc-primary-hover: #60a5fa;
+  --color-cc-accent: #0ea5e9;
+  --color-cc-accent-2: #06b6d4;
+  --color-cc-success: #06b6d4;
+  --color-cc-running: #3b82f6;
+  --color-cc-error: #f87171;
+  --color-cc-warning: #fbbf24;
+}
+
+/* Sunset theme - Orange/Pink/Purple */
+.dark.theme-sunset {
+  --color-cc-primary: #f97316;
+  --color-cc-primary-hover: #fb923c;
+  --color-cc-accent: #ec4899;
+  --color-cc-accent-2: #a855f7;
+  --color-cc-success: #22c55e;
+  --color-cc-running: #f97316;
+  --color-cc-error: #ef4444;
+  --color-cc-warning: #eab308;
+}
+
+/* Forest theme - Green/Emerald */
+.dark.theme-forest {
+  --color-cc-primary: #10b981;
+  --color-cc-primary-hover: #34d399;
+  --color-cc-accent: #14b8a6;
+  --color-cc-accent-2: #84cc16;
+  --color-cc-success: #22c55e;
+  --color-cc-running: #10b981;
+  --color-cc-error: #f87171;
+  --color-cc-warning: #fbbf24;
+}
+
+/* Lavender theme - Purple/Violet/Pink */
+.dark.theme-lavender {
+  --color-cc-primary: #a855f7;
+  --color-cc-primary-hover: #c084fc;
+  --color-cc-accent: #d946ef;
+  --color-cc-accent-2: #8b5cf6;
+  --color-cc-success: #10b981;
+  --color-cc-running: #a855f7;
+  --color-cc-error: #f472b6;
+  --color-cc-warning: #fbbf24;
+}
+
+/* Rose theme - Pink/Red */
+.dark.theme-rose {
+  --color-cc-primary: #f43f5e;
+  --color-cc-primary-hover: #fb7185;
+  --color-cc-accent: #ec4899;
+  --color-cc-accent-2: #e11d48;
+  --color-cc-success: #10b981;
+  --color-cc-running: #f43f5e;
+  --color-cc-error: #dc2626;
+  --color-cc-warning: #f59e0b;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-cc-muted);
+  border-radius: 3px;
+  opacity: 0.4;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  opacity: 0.6;
+}
+
+/* Typography families */
+.font-serif-assistant {
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+}
+
+.font-sans-ui {
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.font-mono-code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
