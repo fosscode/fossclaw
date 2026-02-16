@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         include:
-          # macOS builds
+          # macOS builds (ARM64 only - macos-13 doesn't support bun)
           - os: macos-latest
             platform: darwin
             arch: arm64
@@ -24,9 +24,6 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             arch: x64
-          - os: ubuntu-latest
-            platform: linux
-            arch: arm64
 
           # Windows builds
           - os: windows-latest
@@ -38,32 +35,26 @@ jobs:
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
 
       - name: Get version from tag
         id: version
-        shell: bash
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Build frontend
-        working-directory: web
         run: |
+          cd web
           bun install
           bun run build
 
       - name: Prepare build directory
-        shell: bash
         run: |
           mkdir -p build dist
-
           # Create entry point
           cat > build/entry.ts << 'EOF'
           #!/usr/bin/env bun
           process.env.__FOSSCLAW_PACKAGE_ROOT = import.meta.dir;
           import "./web/server/index.ts";
           EOF
-
           # Copy files
           cp -r web/server build/
           cp -r web/dist build/
@@ -75,12 +66,7 @@ jobs:
         if: runner.os != 'Windows'
         working-directory: build
         run: |
-          if [ "${{ matrix.arch }}" = "arm64" ] && [ "${{ matrix.platform }}" = "linux" ]; then
-            # Cross-compile for Linux ARM64
-            bun build entry.ts --compile --target=bun-linux-arm64 --outfile "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
-          else
-            bun build entry.ts --compile --target=bun --outfile "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
-          fi
+          bun build entry.ts --compile --target=bun --outfile "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
           chmod +x "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
 
       - name: Build binary (Windows)
@@ -103,107 +89,33 @@ jobs:
         shell: bash
         run: |
           cd dist
-          7z a "fossclaw-v${{ steps.version.outputs.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip" \
-            "fossclaw-${{ matrix.platform }}-${{ matrix.arch }}.exe"
-          sha256sum *.zip > checksums.txt
+          powershell -Command "Compress-Archive -Path 'fossclaw-*.exe' -DestinationPath 'fossclaw-v${{ steps.version.outputs.VERSION }}-windows-x64.zip'"
+          shasum -a 256 *.zip > checksums.txt
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: fossclaw-${{ matrix.platform }}-${{ matrix.arch }}
-          path: |
-            dist/*.tar.gz
-            dist/*.zip
-            dist/checksums.txt
+          path: dist/*
 
   release:
-    name: Create Release
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Consolidate artifacts
-        run: |
-          mkdir -p release
-          find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec cp {} release/ \;
-
-          # Create combined checksums file
-          cd release
-          if command -v sha256sum &> /dev/null; then
-            sha256sum * > SHA256SUMS.txt
-          else
-            shasum -a 256 * > SHA256SUMS.txt
-          fi
-
-      - name: Get version and create release notes
-        id: version
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
-          # Extract changelog for this version if exists
-          if [ -f CHANGELOG.md ]; then
-            sed -n "/## \[${VERSION}\]/,/## \[/p" CHANGELOG.md | sed '$ d' > release_notes.md
-          else
-            echo "Release $VERSION" > release_notes.md
-          fi
-
-          # Add installation instructions
-          cat >> release_notes.md << 'EOF'
-
-          ## Installation
-
-          Download the appropriate binary for your platform:
-
-          **macOS (Apple Silicon)**
-          ```bash
-          curl -L https://github.com/${{ github.repository }}/releases/download/v$VERSION/fossclaw-v$VERSION-darwin-arm64.tar.gz | tar xz
-          ./fossclaw-darwin-arm64
-          ```
-
-          **macOS (Intel)**
-          ```bash
-          curl -L https://github.com/${{ github.repository }}/releases/download/v$VERSION/fossclaw-v$VERSION-darwin-x64.tar.gz | tar xz
-          ./fossclaw-darwin-x64
-          ```
-
-          **Linux (x64)**
-          ```bash
-          curl -L https://github.com/${{ github.repository }}/releases/download/v$VERSION/fossclaw-v$VERSION-linux-x64.tar.gz | tar xz
-          ./fossclaw-linux-x64
-          ```
-
-          **Windows (x64)**
-          Download and extract: `fossclaw-v$VERSION-windows-x64.zip`
-
-          ## Configuration
-
-          Set environment variables before running:
-          ```bash
-          export PORT=3456
-          export FOSSCLAW_CWD=/your/working/directory
-          export FOSSCLAW_SESSION_DIR=~/.fossclaw/sessions
-          # Optional: enable auth
-          export FOSSCLAW_USER=admin
-          export FOSSCLAW_PASS=yourpassword
-          ```
-
-          See README.md for full configuration options.
-          EOF
-
-      - name: Create GitHub Release
+      - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: release/*
-          body_path: release_notes.md
           draft: false
-          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+          files: |
+            artifacts/fossclaw-darwin-arm64/*
+            artifacts/fossclaw-linux-x64/*
+            artifacts/fossclaw-windows-x64/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
