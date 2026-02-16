@@ -1,0 +1,59 @@
+name: Publish to NPM
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write  # Required for npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Setup Node.js for npm
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        working-directory: web
+        run: bun install
+
+      - name: Build
+        working-directory: web
+        run: bun run build
+
+      - name: Verify build artifacts
+        run: |
+          if [ ! -d "web/dist" ]; then
+            echo "Error: web/dist not found"
+            exit 1
+          fi
+          echo "✓ Build artifacts verified"
+
+      - name: Update package version
+        working-directory: web
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          npm version $VERSION --no-git-tag-version --allow-same-version
+
+      - name: Publish to npm
+        working-directory: web
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Output publish info
+        run: |
+          echo "✅ Package published to npm!"
+          echo "Version: ${GITHUB_REF#refs/tags/v}"

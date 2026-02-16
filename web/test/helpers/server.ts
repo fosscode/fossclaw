@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { randomUUID } from "node:crypto";
 import { createRoutes } from "../../server/routes.js";
 import { WsBridge } from "../../server/ws-bridge.js";
+import { setAuthCredentials, createSession } from "../../server/auth.js";
 import type { SocketData } from "../../server/ws-bridge.js";
 import type { SdkSessionInfo, LaunchOptions } from "../../server/cli-launcher.js";
 import type { ServerWebSocket } from "bun";
@@ -14,6 +15,8 @@ export interface TestContext {
   wsBaseUrl: string;
   bridge: WsBridge;
   launcher: MockCliLauncher;
+  authCookie: string;
+  authFetch: (url: string, init?: RequestInit) => Promise<Response>;
   close: () => void;
 }
 
@@ -74,9 +77,8 @@ export class MockCliLauncher {
  * Each test should call `close()` in afterEach/afterAll.
  */
 export function createTestServer(): TestContext {
-  // Disable auth for tests — tests don't send session cookies
-  delete process.env.FOSSCLAW_USER;
-  delete process.env.FOSSCLAW_PASS;
+  // Set test credentials (auth is now mandatory)
+  setAuthCredentials("testuser", "testpass");
   const bridge = new WsBridge();
   const launcher = new MockCliLauncher();
   const app = new Hono();
@@ -127,6 +129,18 @@ export function createTestServer(): TestContext {
   });
 
   const port = server.port;
+
+  // Create an auth session for tests
+  const sessionId = createSession("testuser");
+  const authCookie = `fossclaw_session=${sessionId}`;
+
+  // Helper function for authenticated fetch requests
+  const authFetch = (url: string, init?: RequestInit) => {
+    const headers = new Headers(init?.headers);
+    headers.set("Cookie", authCookie);
+    return fetch(url, { ...init, headers });
+  };
+
   return {
     server,
     port,
@@ -134,6 +148,8 @@ export function createTestServer(): TestContext {
     wsBaseUrl: `ws://localhost:${port}`,
     bridge,
     launcher,
+    authCookie,
+    authFetch,
     close: () => server.stop(true),
   };
 }

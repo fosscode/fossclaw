@@ -1,0 +1,34 @@
+# Label PRs based on file changes
+
+'area: frontend':
+  - changed-files:
+    - any-glob-to-any-file: 'web/src/**/*'
+
+'area: server':
+  - changed-files:
+    - any-glob-to-any-file: 'web/server/**/*'
+
+'area: build':
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'build*.sh'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - '**/package.json'
+      - '**/bun.lock'
+
+'area: ci':
+  - changed-files:
+    - any-glob-to-any-file: '.github/**/*'
+
+'area: docs':
+  - changed-files:
+    - any-glob-to-any-file:
+      - '*.md'
+      - 'docs/**/*'
+
+'dependencies':
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/package.json'
+      - '**/bun.lock'

@@ -14,7 +14,8 @@ import { FileSessionStore } from "./session-store.js";
 import { UserPreferencesStore } from "./user-preferences.js";
 import { OllamaClient } from "./ollama-client.js";
 import { generateSelfSignedCert } from "./cert-generator.js";
-import { isAuthEnabled, validateSession, getSessionFromRequest } from "./auth.js";
+import { isAuthEnabled, validateSession, getSessionFromRequest, setAuthCredentials } from "./auth.js";
+import { ensureCredentials, getCredentialsFilePath } from "./credential-generator.js";
 import type { SocketData } from "./ws-bridge.js";
 import type { ServerWebSocket } from "bun";
 
@@ -23,7 +24,8 @@ const packageRoot = process.env.__FOSSCLAW_PACKAGE_ROOT || resolve(__dirname, ".
 
 const port = Number(process.env.PORT) || 3456;
 const defaultCwd = process.env.FOSSCLAW_CWD || process.cwd();
-const useHttps = process.env.FOSSCLAW_HTTPS === "true";
+// HTTPS is mandatory except in test environments
+const useHttps = process.env.NODE_ENV !== "test";
 const httpsHostname = process.env.FOSSCLAW_HTTPS_HOSTNAME || "localhost";
 const certDir = process.env.FOSSCLAW_CERT_DIR || resolve(homedir(), ".fossclaw", "certs");
 
@@ -63,6 +65,10 @@ const opencodePort = Number(process.env.OPENCODE_PORT) || (port + 100);
 const opencodeBridge = new OpenCodeBridge(opencodePort);
 opencodeBridge.setWsBridge(wsBridge);
 launcher.setOpenCodeBridge(opencodeBridge);
+
+// ─── Authentication setup — ensure credentials exist ────────────────────────
+const credentials = await ensureCredentials();
+setAuthCredentials(credentials.username, credentials.password);
 
 const app = new Hono();
 
@@ -210,10 +216,15 @@ const server = Bun.serve<SocketData>({
 
 const protocol = useHttps ? "https" : "http";
 const wsProtocol = useHttps ? "wss" : "ws";
+const httpsStatus = useHttps
+  ? "enabled (mandatory, self-signed cert)"
+  : "disabled (test mode only)";
+
 console.log(`FossClaw running on ${protocol}://localhost:${server.port}`);
 console.log(`  Default CWD:       ${defaultCwd}`);
-console.log(`  HTTPS:             ${useHttps ? "enabled (self-signed)" : "disabled (set FOSSCLAW_HTTPS=true to enable)"}`);
-console.log(`  Auth:              ${isAuthEnabled() ? "enabled" : "disabled (set FOSSCLAW_USER + FOSSCLAW_PASS to enable)"}`);
+console.log(`  HTTPS:             ${httpsStatus}`);
+console.log(`  Auth:              enabled (mandatory, username: ${credentials.username})`);
+console.log(`  Credentials file:  ${getCredentialsFilePath()}`);
 console.log(`  Auto-naming:       ${ollamaUrl ? "enabled" : "disabled (set OLLAMA_URL to enable)"}`);
 console.log(`  Session TTL:       ${sessionTTLMs > 0 ? `${sessionTTLDays} days` : "disabled (set FOSSCLAW_SESSION_TTL_DAYS to enable)"}`);
 console.log(`  CLI WebSocket:     ${wsProtocol}://localhost:${server.port}/ws/cli/:sessionId`);

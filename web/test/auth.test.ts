@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { validateCredentials, isAuthEnabled, createSession, validateSession, deleteSession } from "../server/auth.js";
+import { validateCredentials, isAuthEnabled, createSession, validateSession, deleteSession, setAuthCredentials } from "../server/auth.js";
 
 describe("Authentication", () => {
   beforeEach(() => {
@@ -56,37 +56,27 @@ describe("Authentication", () => {
 
   describe("Credential Validation", () => {
     test("validates correct credentials", () => {
-      process.env.FOSSCLAW_USER = "testuser";
-      process.env.FOSSCLAW_PASS = "testpass";
-
+      setAuthCredentials("testuser", "testpass");
       expect(validateCredentials("testuser", "testpass")).toBe(true);
     });
 
     test("rejects invalid credentials", () => {
-      process.env.FOSSCLAW_USER = "testuser";
-      process.env.FOSSCLAW_PASS = "testpass";
-
+      setAuthCredentials("testuser", "testpass");
       expect(validateCredentials("wrong", "credentials")).toBe(false);
     });
 
     test("rejects wrong username", () => {
-      process.env.FOSSCLAW_USER = "testuser";
-      process.env.FOSSCLAW_PASS = "testpass";
-
+      setAuthCredentials("testuser", "testpass");
       expect(validateCredentials("wronguser", "testpass")).toBe(false);
     });
 
     test("rejects wrong password", () => {
-      process.env.FOSSCLAW_USER = "testuser";
-      process.env.FOSSCLAW_PASS = "testpass";
-
+      setAuthCredentials("testuser", "testpass");
       expect(validateCredentials("testuser", "wrongpass")).toBe(false);
     });
 
     test("credentials are case-sensitive", () => {
-      process.env.FOSSCLAW_USER = "TestUser";
-      process.env.FOSSCLAW_PASS = "TestPass";
-
+      setAuthCredentials("TestUser", "TestPass");
       expect(validateCredentials("testuser", "testpass")).toBe(false);
       expect(validateCredentials("TestUser", "testpass")).toBe(false);
       expect(validateCredentials("testuser", "TestPass")).toBe(false);
@@ -97,30 +87,14 @@ describe("Authentication", () => {
   // ─── Auth State Detection ──────────────────────────────────────────
 
   describe("Auth State Detection", () => {
-    test("detects when auth is enabled", () => {
-      process.env.FOSSCLAW_USER = "user";
-      process.env.FOSSCLAW_PASS = "pass";
-
+    test("auth is always enabled (mandatory)", () => {
       expect(isAuthEnabled()).toBe(true);
     });
 
-    test("detects when auth is disabled", () => {
-      expect(isAuthEnabled()).toBe(false);
-    });
-
-    test("requires both username and password", () => {
-      process.env.FOSSCLAW_USER = "user";
-      expect(isAuthEnabled()).toBe(false);
-
+    test("auth remains enabled even without env vars", () => {
       delete process.env.FOSSCLAW_USER;
-      process.env.FOSSCLAW_PASS = "pass";
-      expect(isAuthEnabled()).toBe(false);
-    });
-
-    test("empty values don't enable auth", () => {
-      process.env.FOSSCLAW_USER = "";
-      process.env.FOSSCLAW_PASS = "";
-      expect(isAuthEnabled()).toBe(false);
+      delete process.env.FOSSCLAW_PASS;
+      expect(isAuthEnabled()).toBe(true);
     });
   });
 
@@ -129,40 +103,30 @@ describe("Authentication", () => {
   describe("Special Characters", () => {
     test("handles special characters in password", () => {
       const password = "p@ssw0rd!#$%^&*()";
-      process.env.FOSSCLAW_USER = "user";
-      process.env.FOSSCLAW_PASS = password;
-
+      setAuthCredentials("user", password);
       expect(validateCredentials("user", password)).toBe(true);
     });
 
     test("handles special characters in username", () => {
       const username = "user@example.com";
-      process.env.FOSSCLAW_USER = username;
-      process.env.FOSSCLAW_PASS = "pass";
-
+      setAuthCredentials(username, "pass");
       expect(validateCredentials(username, "pass")).toBe(true);
     });
 
     test("handles colon in password", () => {
       const password = "pass:with:colons";
-      process.env.FOSSCLAW_USER = "user";
-      process.env.FOSSCLAW_PASS = password;
-
+      setAuthCredentials("user", password);
       expect(validateCredentials("user", password)).toBe(true);
     });
 
     test("handles unicode characters", () => {
       const password = "пароль密码🔐";
-      process.env.FOSSCLAW_USER = "user";
-      process.env.FOSSCLAW_PASS = password;
-
+      setAuthCredentials("user", password);
       expect(validateCredentials("user", password)).toBe(true);
     });
 
     test("handles whitespace in credentials", () => {
-      process.env.FOSSCLAW_USER = " user ";
-      process.env.FOSSCLAW_PASS = " pass ";
-
+      setAuthCredentials(" user ", " pass ");
       expect(validateCredentials(" user ", " pass ")).toBe(true);
       expect(validateCredentials("user", "pass")).toBe(false);
     });
@@ -222,9 +186,7 @@ describe("Authentication", () => {
 
   describe("Edge Cases", () => {
     test("handles empty strings in credentials", () => {
-      process.env.FOSSCLAW_USER = "user";
-      process.env.FOSSCLAW_PASS = "pass";
-
+      setAuthCredentials("user", "pass");
       expect(validateCredentials("", "")).toBe(false);
       expect(validateCredentials("user", "")).toBe(false);
       expect(validateCredentials("", "pass")).toBe(false);
@@ -241,10 +203,7 @@ describe("Authentication", () => {
     test("very long credentials work", () => {
       const longUsername = "a".repeat(1000);
       const longPassword = "b".repeat(1000);
-
-      process.env.FOSSCLAW_USER = longUsername;
-      process.env.FOSSCLAW_PASS = longPassword;
-
+      setAuthCredentials(longUsername, longPassword);
       expect(validateCredentials(longUsername, longPassword)).toBe(true);
     });
   });

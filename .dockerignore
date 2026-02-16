@@ -1,0 +1,59 @@
+# Node modules
+node_modules/
+web/node_modules/
+**/node_modules/
+
+# Build artifacts
+dist/
+build/
+web/dist/
+*.log
+
+# Git
+.git/
+.github/
+.gitignore
+
+# Development files
+.env
+.env.*
+!.env.example
+*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+coverage/
+*.test.ts
+*.spec.ts
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# CI/CD
+.gitlab-ci.yml
+azure-pipelines.yml
+
+# Deployment scripts
+deploy-*.sh
+*.sh
+!setup-hooks.sh
+
+# Cache
+.npm-cache/
+.cache/
+
+# Temporary files
+tmp/
+temp/

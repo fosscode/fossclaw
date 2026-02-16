@@ -1,18 +1,76 @@
 # FossClaw
 
+[![CI](https://github.com/fosscode/fossclaw/actions/workflows/ci.yml/badge.svg)](https://github.com/fosscode/fossclaw/actions/workflows/ci.yml)
+[![Release](https://github.com/fosscode/fossclaw/actions/workflows/release.yml/badge.svg)](https://github.com/fosscode/fossclaw/actions/workflows/release.yml)
+[![CodeQL](https://github.com/fosscode/fossclaw/actions/workflows/codeql.yml/badge.svg)](https://github.com/fosscode/fossclaw/actions/workflows/codeql.yml)
+[![Docker](https://github.com/fosscode/fossclaw/actions/workflows/docker.yml/badge.svg)](https://github.com/fosscode/fossclaw/actions/workflows/docker.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A web interface for Claude Code, built on a reverse-engineered WebSocket protocol from the CLI.
 
 Launch Claude Code sessions from your browser. Stream responses in real-time. Approve tool calls. Monitor multiple agents. No API key needed — uses your existing Claude Code subscription.
 
-## Quick Start
+## Installation
 
 > **Prerequisite:** [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated.
 
+### Option 1: Download Pre-built Binary (Recommended)
+
+Download the latest release for your platform:
+
+**macOS (Apple Silicon)**
 ```bash
-cd web && bun install && bun run build && bun run start
+curl -L https://github.com/fosscode/fossclaw/releases/latest/download/fossclaw-darwin-arm64.tar.gz | tar xz
+./fossclaw-darwin-arm64
 ```
 
-Open [http://localhost:3456](http://localhost:3456) and start coding.
+**macOS (Intel)**
+```bash
+curl -L https://github.com/fosscode/fossclaw/releases/latest/download/fossclaw-darwin-x64.tar.gz | tar xz
+./fossclaw-darwin-x64
+```
+
+**Linux (x64)**
+```bash
+curl -L https://github.com/fosscode/fossclaw/releases/latest/download/fossclaw-linux-x64.tar.gz | tar xz
+./fossclaw-linux-x64
+```
+
+**Linux (ARM64)**
+```bash
+curl -L https://github.com/fosscode/fossclaw/releases/latest/download/fossclaw-linux-arm64.tar.gz | tar xz
+./fossclaw-linux-arm64
+```
+
+**Windows (x64)**
+
+Download and extract: [fossclaw-windows-x64.zip](https://github.com/fosscode/fossclaw/releases/latest/download/fossclaw-windows-x64.zip)
+
+### Option 2: Run with Docker
+
+```bash
+docker run -p 3456:3456 -v ~/.fossclaw:/data ghcr.io/fosscode/fossclaw:latest
+```
+
+### Option 3: Build from Source
+
+```bash
+git clone https://github.com/fosscode/fossclaw.git
+cd fossclaw/web
+bun install
+bun run build
+bun run start
+```
+
+### First-Time Setup
+
+Open [https://localhost:3456](https://localhost:3456)
+
+FossClaw requires HTTPS and authentication. On first run:
+- A self-signed certificate is automatically generated
+- Login credentials are auto-generated and saved to `~/.fossclaw/credentials.json`
+- The username and password are displayed in the console (save them!)
+- Your browser will warn about the self-signed certificate - click "Advanced" and proceed
 
 ## Features
 
@@ -176,9 +234,8 @@ web/
 |----------|---------|-------------|
 | `PORT` | 3456 | Server port |
 | `FOSSCLAW_CWD` | `process.cwd()` | Default working directory for sessions |
-| `FOSSCLAW_USER` | — | Username for form-based auth (both required) |
-| `FOSSCLAW_PASS` | — | Password for form-based auth (both required) |
-| `FOSSCLAW_HTTPS` | `false` | Set to `"true"` to enable HTTPS with self-signed certificates |
+| `FOSSCLAW_USER` | — | Username for form-based auth (auto-generated if not set) |
+| `FOSSCLAW_PASS` | — | Password for form-based auth (auto-generated if not set) |
 | `FOSSCLAW_HTTPS_HOSTNAME` | `"localhost"` | Hostname for certificate generation |
 | `FOSSCLAW_CERT_DIR` | `~/.fossclaw/certs` | Directory to store/find TLS certificates |
 | `FOSSCLAW_SESSION_DIR` | `~/.fossclaw/sessions` | Session storage path (share across instances) |
@@ -187,16 +244,18 @@ web/
 | `OLLAMA_URL` | — | Ollama service URL for auto-naming sessions (e.g., `http://localhost:11434`) |
 | `OLLAMA_MODEL` | `llama3.2:3b` | Ollama model to use for session naming |
 
+**Security**: HTTPS (self-signed certificates) and form-based authentication are now mandatory and cannot be disabled. If credentials are not provided via environment variables, they are auto-generated on first run and saved to `~/.fossclaw/credentials.json`.
+
 ## Development
 
 ```bash
 cd web
 bun install
-bun run dev          # server on :3456
+bun run dev          # server on :3456 (HTTPS)
 bun run dev:vite     # Vite on :5174 (separate terminal)
 ```
 
-Open [http://localhost:5174](http://localhost:5174) for hot-reloading development.
+Open [https://localhost:5174](https://localhost:5174) for hot-reloading development (note: HTTPS with self-signed cert).
 
 ### Git Hooks
 
@@ -234,20 +293,75 @@ Build self-contained executables for distribution:
 ```bash
 # Build for current platform
 ./build.sh
-
-# Create GitHub release
-./release.sh 2.3.0
 ```
 
 Binaries include everything needed to run (frontend, server, dependencies) in a single ~57MB executable (~21MB compressed).
 
-**Platform Support:**
-- macOS (ARM64, x64)
-- Linux (x64)
-- Windows (x64)
+### Creating a Release
 
-See [BUILD.md](./BUILD.md) for detailed build instructions and [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) for release workflow.
+Maintainers can create releases using the helper script:
+
+```bash
+./scripts/create-release.sh 0.2.0
+```
+
+This will:
+1. Update version in package.json files
+2. Create a GPG-signed git tag
+3. Provide instructions for pushing
+
+Once the tag is pushed, GitHub Actions will automatically:
+- Build binaries for all platforms (macOS, Linux, Windows)
+- Create compressed archives with checksums
+- Publish a GitHub Release with auto-generated installation instructions
+
+**Platform Support:**
+- macOS (Apple Silicon & Intel)
+- Linux (x64 & ARM64)
+- Windows (x64)
+- Docker (multi-arch: amd64, arm64)
+
+See [docs/RELEASE.md](./docs/RELEASE.md) for the complete release process and [docs/GITHUB_ACTIONS.md](./docs/GITHUB_ACTIONS.md) for CI/CD documentation.
+
+## Contributing
+
+We welcome contributions! Please see:
+
+- [CONTRIBUTING.md](./CONTRIBUTING.md) - Development workflow, coding standards, PR process
+- [docs/GITHUB_ACTIONS.md](./docs/GITHUB_ACTIONS.md) - CI/CD workflows and automation
+- [docs/RELEASE.md](./docs/RELEASE.md) - Release process for maintainers
+
+**Quick Start for Contributors:**
+
+```bash
+# Fork and clone
+git clone https://github.com/YOUR_USERNAME/fossclaw.git
+cd fossclaw
+
+# Install dependencies
+cd web && bun install
+
+# Run development server
+bun run dev          # Terminal 1: Backend (:3456)
+bun run dev:vite     # Terminal 2: Frontend (:5174)
+
+# Run tests
+bun test
+
+# Type check
+bun run typecheck
+```
+
+## Community
+
+- **Issues**: [Report bugs or request features](https://github.com/fosscode/fossclaw/issues)
+- **Discussions**: [Ask questions and share ideas](https://github.com/fosscode/fossclaw/discussions)
+- **Pull Requests**: Contributions are welcome!
 
 ## License
 
 MIT
+
+---
+
+**Built with ❤️ by the FossCode community**

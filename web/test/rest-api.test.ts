@@ -17,7 +17,7 @@ describe("REST API", () => {
 
   describe("POST /api/sessions/create", () => {
     test("returns a session with sessionId and state", async () => {
-      const res = await fetch(`${ctx.baseUrl}/api/sessions/create`, {
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
@@ -31,7 +31,7 @@ describe("REST API", () => {
     });
 
     test("passes model and permissionMode through", async () => {
-      const res = await fetch(`${ctx.baseUrl}/api/sessions/create`, {
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: "opus", permissionMode: "plan" }),
@@ -45,18 +45,18 @@ describe("REST API", () => {
   describe("GET /api/sessions", () => {
     test("lists all created sessions", async () => {
       // Create 2 sessions
-      await fetch(`${ctx.baseUrl}/api/sessions/create`, {
+      await ctx.authFetch(`${ctx.baseUrl}/api/sessions/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      await fetch(`${ctx.baseUrl}/api/sessions/create`, {
+      await ctx.authFetch(`${ctx.baseUrl}/api/sessions/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
 
-      const res = await fetch(`${ctx.baseUrl}/api/sessions`);
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/sessions`);
       expect(res.status).toBe(200);
       const sessions = await res.json();
       expect(sessions).toBeArrayOfSize(2);
@@ -68,41 +68,41 @@ describe("REST API", () => {
 
   describe("GET /api/sessions/:id", () => {
     test("returns a specific session", async () => {
-      const createRes = await fetch(`${ctx.baseUrl}/api/sessions/create`, {
+      const createRes = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
       const { sessionId } = await createRes.json();
 
-      const res = await fetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.sessionId).toBe(sessionId);
     });
 
     test("returns 404 for unknown ID", async () => {
-      const res = await fetch(`${ctx.baseUrl}/api/sessions/00000000-0000-0000-0000-000000000000`);
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/00000000-0000-0000-0000-000000000000`);
       expect(res.status).toBe(404);
     });
   });
 
   describe("POST /api/sessions/:id/kill", () => {
     test("kills a session", async () => {
-      const createRes = await fetch(`${ctx.baseUrl}/api/sessions/create`, {
+      const createRes = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
       const { sessionId } = await createRes.json();
 
-      const killRes = await fetch(`${ctx.baseUrl}/api/sessions/${sessionId}/kill`, { method: "POST" });
+      const killRes = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${sessionId}/kill`, { method: "POST" });
       expect(killRes.status).toBe(200);
       const killData = await killRes.json();
       expect(killData.ok).toBe(true);
 
       // Session should now be exited
-      const getRes = await fetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
+      const getRes = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
       const session = await getRes.json();
       expect(session.state).toBe("exited");
     });
@@ -110,18 +110,18 @@ describe("REST API", () => {
 
   describe("DELETE /api/sessions/:id", () => {
     test("kills and removes a session", async () => {
-      const createRes = await fetch(`${ctx.baseUrl}/api/sessions/create`, {
+      const createRes = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
       const { sessionId } = await createRes.json();
 
-      const delRes = await fetch(`${ctx.baseUrl}/api/sessions/${sessionId}`, { method: "DELETE" });
+      const delRes = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${sessionId}`, { method: "DELETE" });
       expect(delRes.status).toBe(200);
 
       // Session should be gone
-      const getRes = await fetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
+      const getRes = await ctx.authFetch(`${ctx.baseUrl}/api/sessions/${sessionId}`);
       expect(getRes.status).toBe(404);
     });
   });
@@ -130,7 +130,7 @@ describe("REST API", () => {
 
   describe("GET /api/fs/home", () => {
     test("returns home directory and cwd", async () => {
-      const res = await fetch(`${ctx.baseUrl}/api/fs/home`);
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/fs/home`);
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.home).toBe(homedir());
@@ -140,7 +140,7 @@ describe("REST API", () => {
 
   describe("GET /api/fs/list", () => {
     test("lists directories at /tmp", async () => {
-      const res = await fetch(`${ctx.baseUrl}/api/fs/list?path=/tmp`);
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/fs/list?path=/tmp`);
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.path).toBeString();
@@ -149,7 +149,7 @@ describe("REST API", () => {
     });
 
     test("returns 400 for nonexistent path", async () => {
-      const res = await fetch(`${ctx.baseUrl}/api/fs/list?path=/nonexistent_path_12345`);
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/fs/list?path=/nonexistent_path_12345`);
       expect(res.status).toBe(400);
       const data = await res.json();
       expect(data.error).toBe("Cannot read directory");

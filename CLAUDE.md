@@ -7,18 +7,20 @@ Web UI for Claude Code agents. Based on the reverse-engineered Claude Code WebSo
 ```bash
 cd web
 bun install
-bun run dev          # server on :3456
+bun run dev          # server on :3456 (HTTPS)
 bun run dev:vite     # Vite on :5174 (separate terminal)
 ```
 
-Open http://localhost:5174 for hot-reloading development.
+Open https://localhost:5174 for hot-reloading development (HTTPS with self-signed cert).
 
 ## Production
 
 ```bash
 cd web
-bun run build && bun run start   # everything on :3456
+bun run build && bun run start   # everything on :3456 (HTTPS)
 ```
+
+On first run, credentials are auto-generated and saved to `~/.fossclaw/credentials.json`.
 
 ## Deployment
 
@@ -84,14 +86,15 @@ CLI speaks NDJSON (newline-delimited JSON), browser speaks plain JSON. Two endpo
 - `FOSSCLAW_CWD` — default working directory for new sessions
 - `FOSSCLAW_SESSION_DIR` — session storage path (default `~/.fossclaw/sessions`). Set to same path across instances to share sessions.
 - `FOSSCLAW_SESSION_TTL_DAYS` — how long to keep inactive sessions in days (default 7, set to 0 to disable cleanup)
-- `FOSSCLAW_USER` + `FOSSCLAW_PASS` — basic auth (both required to enable)
-- `FOSSCLAW_HTTPS` — set to `"true"` to enable HTTPS with self-signed certificates
+- `FOSSCLAW_USER` + `FOSSCLAW_PASS` — authentication credentials (optional, auto-generated if not set and saved to `~/.fossclaw/credentials.json`)
 - `FOSSCLAW_HTTPS_HOSTNAME` — hostname for certificate generation (default `"localhost"`)
 - `FOSSCLAW_CERT_DIR` — directory to store/find TLS certificates (default `~/.fossclaw/certs`)
 - `LINEAR_API_KEY` — for Linear integration endpoints
 - `OPENCODE_PORT` — for OpenCode bridge (default PORT+100)
 - `OLLAMA_URL` — Ollama service URL for auto-naming sessions (e.g., `http://localhost:11434`)
 - `OLLAMA_MODEL` — Ollama model to use for naming (default `llama3.2:3b`)
+
+**Security**: HTTPS (self-signed certificates) and form-based authentication are now mandatory and cannot be disabled.
 
 ## Session Persistence
 

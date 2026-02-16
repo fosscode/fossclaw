@@ -27,8 +27,11 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             arch: x64
+          - os: ubuntu-latest
+            platform: linux
+            arch: arm64
 
-          # Windows build
+          # Windows builds
           - os: windows-latest
             platform: windows
             arch: x64
@@ -75,7 +78,12 @@ jobs:
         if: runner.os != 'Windows'
         working-directory: build
         run: |
-          bun build entry.ts --compile --target=bun --outfile "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
+          if [ "${{ matrix.arch }}" = "arm64" ] && [ "${{ matrix.platform }}" = "linux" ]; then
+            # Cross-compile for Linux ARM64
+            bun build entry.ts --compile --target=bun-linux-arm64 --outfile "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
+          else
+            bun build entry.ts --compile --target=bun --outfile "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
+          fi
           chmod +x "../dist/fossclaw-${{ matrix.platform }}-${{ matrix.arch }}"
 
       - name: Build binary (Windows)

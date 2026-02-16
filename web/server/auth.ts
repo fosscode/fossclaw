@@ -42,22 +42,31 @@ export function deleteSession(sessionId: string | undefined): void {
   }
 }
 
+let authCredentials: { username: string; password: string } | null = null;
+
+/**
+ * Set authentication credentials (called from server startup)
+ */
+export function setAuthCredentials(username: string, password: string): void {
+  authCredentials = { username, password };
+}
+
+/**
+ * Authentication is now always enabled (no opt-out)
+ */
 export function isAuthEnabled(): boolean {
-  return !!(process.env.FOSSCLAW_USER && process.env.FOSSCLAW_PASS);
+  return true;
 }
 
 export function validateCredentials(username: string, password: string): boolean {
-  const authUser = process.env.FOSSCLAW_USER;
-  const authPass = process.env.FOSSCLAW_PASS;
-  return username === authUser && password === authPass;
+  if (!authCredentials) {
+    throw new Error("Authentication credentials not initialized");
+  }
+  return username === authCredentials.username && password === authCredentials.password;
 }
 
-// Middleware to protect routes
+// Middleware to protect routes (now always enforced)
 export const requireAuth = createMiddleware(async (c, next) => {
-  if (!isAuthEnabled()) {
-    return next();
-  }
-
   const sessionId = getCookie(c, "fossclaw_session");
   if (!validateSession(sessionId)) {
     return c.json({ error: "Unauthorized" }, 401);
@@ -66,11 +75,11 @@ export const requireAuth = createMiddleware(async (c, next) => {
   return next();
 });
 
-// Helper to set auth cookie
+// Helper to set auth cookie (HTTPS is now mandatory, so secure is always true)
 export function setAuthCookie(c: any, sessionId: string): void {
   setCookie(c, "fossclaw_session", sessionId, {
     httpOnly: true,
-    secure: process.env.FOSSCLAW_HTTPS === "true",
+    secure: true,
     sameSite: "Lax",
     maxAge: SESSION_MAX_AGE,
     path: "/",
