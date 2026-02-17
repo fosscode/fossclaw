@@ -3,7 +3,6 @@ node_modules/
 .npm-cache/
 
 # Build output
-dist/
 build/
 *.tar.gz
 *.zip
