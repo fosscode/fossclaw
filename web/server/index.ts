@@ -22,6 +22,11 @@ import type { ServerWebSocket } from "bun";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageRoot = process.env.__FOSSCLAW_PACKAGE_ROOT || resolve(__dirname, "..");
 
+// In production mode (binary), NODE_ENV should be set to "production"
+if (!process.env.NODE_ENV && process.env.__FOSSCLAW_PACKAGE_ROOT) {
+  process.env.NODE_ENV = "production";
+}
+
 const port = Number(process.env.PORT) || 3456;
 const defaultCwd = process.env.FOSSCLAW_CWD || process.cwd();
 // HTTPS is mandatory except in test environments

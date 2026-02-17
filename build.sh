@@ -25,7 +25,15 @@ cd ..
 cat > "$BUILD_DIR/entry.ts" << 'EOF'
 #!/usr/bin/env bun
 // FossClaw Standalone Entry Point
-process.env.__FOSSCLAW_PACKAGE_ROOT = import.meta.dir;
+// __FOSSCLAW_PACKAGE_ROOT will be set by the wrapper script
+// If not set (running directly), fall back to current directory
+if (!process.env.__FOSSCLAW_PACKAGE_ROOT) {
+  process.env.__FOSSCLAW_PACKAGE_ROOT = import.meta.dir;
+}
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = "production";
+}
+
 import "./server/index.ts";
 EOF
 
@@ -58,21 +66,57 @@ cd "$BUILD_DIR"
 
 # Build binary
 if [ "$CURRENT_PLATFORM" = "darwin" ]; then
-  bun build entry.ts --compile --target=bun --outfile "../${DIST_DIR}/fossclaw-darwin-${CURRENT_ARCH}"
+  bun build entry.ts --compile --target=bun --outfile "../${DIST_DIR}/fossclaw-darwin-${CURRENT_ARCH}.bin"
+  chmod +x "../${DIST_DIR}/fossclaw-darwin-${CURRENT_ARCH}.bin"
+
+  # Create wrapper script that sets __FOSSCLAW_PACKAGE_ROOT
+  cat > "../${DIST_DIR}/fossclaw-darwin-${CURRENT_ARCH}" << 'WRAPPER_EOF'
+#!/bin/bash
+# FossClaw wrapper script - determines the directory where this script lives
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export __FOSSCLAW_PACKAGE_ROOT="$SCRIPT_DIR"
+export NODE_ENV=production
+exec "$SCRIPT_DIR/$(basename "$0").bin" "$@"
+WRAPPER_EOF
+
   chmod +x "../${DIST_DIR}/fossclaw-darwin-${CURRENT_ARCH}"
 
-  # Create tarball
+  # Copy dist folder to be included in tarball
+  cp -r dist "../${DIST_DIR}/dist"
+
+  # Create tarball with wrapper, binary, and dist folder
   tar -czf "../${DIST_DIR}/fossclaw-v${VERSION}-darwin-${CURRENT_ARCH}.tar.gz" \
-    -C "../${DIST_DIR}" "fossclaw-darwin-${CURRENT_ARCH}"
+    -C "../${DIST_DIR}" "fossclaw-darwin-${CURRENT_ARCH}" "fossclaw-darwin-${CURRENT_ARCH}.bin" "dist"
+
+  # Clean up
+  rm -rf "../${DIST_DIR}/dist" "../${DIST_DIR}/fossclaw-darwin-${CURRENT_ARCH}.bin" "../${DIST_DIR}/fossclaw-darwin-${CURRENT_ARCH}"
 
   echo "✓ Built: fossclaw-v${VERSION}-darwin-${CURRENT_ARCH}.tar.gz"
 elif [ "$CURRENT_PLATFORM" = "linux" ]; then
-  bun build entry.ts --compile --target=bun --outfile "../${DIST_DIR}/fossclaw-linux-${CURRENT_ARCH}"
+  bun build entry.ts --compile --target=bun --outfile "../${DIST_DIR}/fossclaw-linux-${CURRENT_ARCH}.bin"
+  chmod +x "../${DIST_DIR}/fossclaw-linux-${CURRENT_ARCH}.bin"
+
+  # Create wrapper script that sets __FOSSCLAW_PACKAGE_ROOT
+  cat > "../${DIST_DIR}/fossclaw-linux-${CURRENT_ARCH}" << 'WRAPPER_EOF'
+#!/bin/bash
+# FossClaw wrapper script - determines the directory where this script lives
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export __FOSSCLAW_PACKAGE_ROOT="$SCRIPT_DIR"
+export NODE_ENV=production
+exec "$SCRIPT_DIR/$(basename "$0").bin" "$@"
+WRAPPER_EOF
+
   chmod +x "../${DIST_DIR}/fossclaw-linux-${CURRENT_ARCH}"
 
-  # Create tarball
+  # Copy dist folder to be included in tarball
+  cp -r dist "../${DIST_DIR}/dist"
+
+  # Create tarball with wrapper, binary, and dist folder
   tar -czf "../${DIST_DIR}/fossclaw-v${VERSION}-linux-${CURRENT_ARCH}.tar.gz" \
-    -C "../${DIST_DIR}" "fossclaw-linux-${CURRENT_ARCH}"
+    -C "../${DIST_DIR}" "fossclaw-linux-${CURRENT_ARCH}" "fossclaw-linux-${CURRENT_ARCH}.bin" "dist"
+
+  # Clean up
+  rm -rf "../${DIST_DIR}/dist" "../${DIST_DIR}/fossclaw-linux-${CURRENT_ARCH}.bin" "../${DIST_DIR}/fossclaw-linux-${CURRENT_ARCH}"
 
   echo "✓ Built: fossclaw-v${VERSION}-linux-${CURRENT_ARCH}.tar.gz"
 else
