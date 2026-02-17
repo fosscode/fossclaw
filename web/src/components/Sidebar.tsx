@@ -3,6 +3,7 @@ import { useStore } from "../store.js";
 import { api } from "../api.js";
 import { connectSession, disconnectSession } from "../ws.js";
 import { ThemeSelector } from "./ThemeSelector.js";
+import { requestNotificationPermission } from "../utils/notifications.js";
 
 function useSidebarResize() {
   const setSidebarWidth = useStore((s) => s.setSidebarWidth);
@@ -464,6 +465,22 @@ export function Sidebar() {
             <path d="M4 5h12M4 10h12M4 15h8" />
           </svg>
           <span>Coder View</span>
+        </button>
+        <button
+          onClick={async () => {
+            const granted = await requestNotificationPermission();
+            if (granted) {
+              alert("Notifications enabled! You'll be notified when other sessions need input.");
+            } else {
+              alert("Notifications were denied. Enable them in your browser settings.");
+            }
+          }}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-sm text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+          </svg>
+          <span>Enable Notifications</span>
         </button>
       </div>
 
