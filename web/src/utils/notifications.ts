@@ -1,3 +1,5 @@
+import { useStore } from "../store.js";
+
 let permissionChecked = false;
 let notificationPermission: NotificationPermission = "default";
 
@@ -32,6 +34,7 @@ export function sendNotification(title: string, options?: NotificationOptions): 
 }
 
 export function notifyJobComplete(sessionName: string, sessionId: string, isCurrentSession: boolean): void {
+  if (!useStore.getState().notificationsEnabled) return;
   if (isCurrentSession) return;
   
   sendNotification("Job Complete", {
