@@ -103,20 +103,26 @@ jobs:
           cp README.md ../dist/
           ls -la ../dist/
 
-      - name: Create archive (Unix)
+      - name: Create archives (Unix)
         if: runner.os != 'Windows'
         run: |
           cd dist
           sleep 2
+          # Versioned archive
           { tar -czf "fossclaw-v${{ steps.version.outputs.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz" . 2>&1 || true; } | grep -v "file changed" || true
+          # Latest archive (without version)
+          { tar -czf "fossclaw-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz" . 2>&1 || true; } | grep -v "file changed" || true
           shasum -a 256 *.tar.gz > checksums.txt
 
-      - name: Create archive (Windows)
+      - name: Create archives (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           cd dist
+          # Versioned archive
           Compress-Archive -Path "fossclaw-*.exe" -DestinationPath "fossclaw-v${{ steps.version.outputs.VERSION }}-windows-x64.zip"
+          # Latest archive (without version)
+          Compress-Archive -Path "fossclaw-*.exe" -DestinationPath "fossclaw-windows-x64.zip"
           Get-ChildItem *.zip | ForEach-Object { (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash.ToLower() } > checksums.txt
 
       - name: Upload artifacts
@@ -140,9 +146,9 @@ jobs:
         with:
           draft: false
           files: |
-            artifacts/fossclaw-darwin-arm64/fossclaw-v*
-            artifacts/fossclaw-linux-x64/fossclaw-v*
-            artifacts/fossclaw-windows-x64/fossclaw-v*
+            artifacts/fossclaw-darwin-arm64/fossclaw-*
+            artifacts/fossclaw-linux-x64/fossclaw-*
+            artifacts/fossclaw-windows-x64/fossclaw-*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -150,5 +156,3 @@ jobs:
         run: |
           echo "✅ Release created successfully!"
           echo "Version: ${{ steps.version.outputs.VERSION }}"
-          echo "Artifacts:"
-          ls -lh release/

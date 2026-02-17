@@ -16,35 +16,107 @@ Launch Claude Code sessions from your browser. Stream responses in real-time. Ap
 
 ### Option 1: Download Pre-built Binary (Recommended)
 
-Download the latest release for your platform:
+**Quick install (macOS/Linux):**
+```bash
+mkdir -p ~/fossclaw && cd ~/fossclaw
+curl -L https://github.com/fosscode/fossclaw/releases/latest/download/fossclaw-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m).tar.gz | tar xz
+```
+
+**Platform-specific URLs:**
 
 **macOS (Apple Silicon)**
 ```bash
+mkdir -p ~/fossclaw && cd ~/fossclaw
 curl -L https://github.com/fosscode/fossclaw/releases/latest/download/fossclaw-darwin-arm64.tar.gz | tar xz
 ./fossclaw-darwin-arm64
 ```
 
 **macOS (Intel)**
 ```bash
+mkdir -p ~/fossclaw && cd ~/fossclaw
 curl -L https://github.com/fosscode/fossclaw/releases/latest/download/fossclaw-darwin-x64.tar.gz | tar xz
 ./fossclaw-darwin-x64
 ```
 
 **Linux (x64)**
 ```bash
+mkdir -p ~/fossclaw && cd ~/fossclaw
 curl -L https://github.com/fosscode/fossclaw/releases/latest/download/fossclaw-linux-x64.tar.gz | tar xz
 ./fossclaw-linux-x64
 ```
 
 **Linux (ARM64)**
 ```bash
+mkdir -p ~/fossclaw && cd ~/fossclaw
 curl -L https://github.com/fosscode/fossclaw/releases/latest/download/fossclaw-linux-arm64.tar.gz | tar xz
 ./fossclaw-linux-arm64
 ```
 
 **Windows (x64)**
 
-Download and extract: [fossclaw-windows-x64.zip](https://github.com/fosscode/fossclaw/releases/latest/download/fossclaw-windows-x64.zip)
+Download and extract: https://github.com/fosscode/fossclaw/releases/latest/download/fossclaw-windows-x64.zip
+
+Then run `fossclaw-windows-x64.exe` from the extracted folder.
+
+#### Optional: Create a .env file
+
+Create a `.env` file in the FossClaw folder to customize settings:
+
+```bash
+cd ~/fossclaw
+cat > .env << 'EOF'
+# Server port (default: 3456)
+PORT=3456
+
+# Default working directory for Claude sessions
+FOSSCLAW_CWD=/path/to/your/projects
+
+# Custom credentials (optional - auto-generated if omitted)
+# FOSSCLAW_USER=admin
+# FOSSCLAW_PASS=your_secure_password
+
+# Optional: Linear integration
+# LINEAR_API_KEY=your_linear_api_key
+
+# Optional: Ollama for auto-naming sessions
+# OLLAMA_URL=http://localhost:11434
+# OLLAMA_MODEL=llama3.2:3b
+EOF
+```
+
+#### Starting FossClaw
+
+```bash
+cd ~/fossclaw
+./fossclaw-darwin-arm64   # or your platform's binary
+```
+
+The server will:
+1. Start on https://localhost:3456
+2. Generate a self-signed HTTPS certificate (first run only)
+3. Create credentials and save to `~/.fossclaw/credentials.json`
+4. Print your login credentials to the console
+
+Open https://localhost:3456 in your browser. Accept the self-signed certificate warning, then log in with the credentials shown in the terminal.
+
+#### Optional: Add to PATH or create a launcher
+
+To run `fossclaw` from anywhere, either add the folder to your PATH:
+
+```bash
+# Add to ~/.zshrc or ~/.bashrc
+export PATH="$HOME/fossclaw:$PATH"
+```
+
+Or create a simple launcher script:
+
+```bash
+# Create ~/fossclaw/fossclaw (no extension)
+echo '#!/bin/bash
+cd "$(dirname "$0")"
+./fossclaw-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m) "$@"' > ~/fossclaw/fossclaw
+chmod +x ~/fossclaw/fossclaw
+```
 
 ### Option 2: Run with Docker
 
@@ -64,13 +136,15 @@ bun run start
 
 ### First-Time Setup
 
-Open [https://localhost:3456](https://localhost:3456)
+1. Run the binary: `./fossclaw-darwin-arm64` (or your platform's binary)
+2. Open [https://localhost:3456](https://localhost:3456) in your browser
+3. Accept the self-signed certificate warning (click "Advanced" → "Proceed")
+4. Log in with the credentials shown in your terminal
 
-FossClaw requires HTTPS and authentication. On first run:
-- A self-signed certificate is automatically generated
-- Login credentials are auto-generated and saved to `~/.fossclaw/credentials.json`
-- The username and password are displayed in the console (save them!)
-- Your browser will warn about the self-signed certificate - click "Advanced" and proceed
+On first run, FossClaw:
+- Automatically generates a self-signed HTTPS certificate
+- Creates login credentials saved to `~/.fossclaw/credentials.json`
+- Displays credentials in the terminal (save them!)
 
 ## Features
 
