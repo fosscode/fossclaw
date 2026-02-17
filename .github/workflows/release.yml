@@ -40,12 +40,6 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Build frontend
-        run: |
-          cd web
-          bun install
-          bun run build
-
       - name: Prepare build directory (Unix)
         if: runner.os != 'Windows'
         run: |
