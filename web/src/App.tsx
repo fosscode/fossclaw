@@ -10,6 +10,7 @@ import { PlaybookSelector } from "./components/PlaybookSelector.js";
 import { PlaybookManager } from "./components/PlaybookManager.js";
 import { VersionBadge } from "./components/VersionBadge.js";
 import { KeyboardShortcuts } from "./components/KeyboardShortcuts.js";
+import { Settings } from "./components/Settings.js";
 import { Login } from "./components/Login.js";
 import { api } from "./api.js";
 import type { Playbook } from "./types.js";
@@ -201,6 +202,9 @@ export default function App() {
 
       <VersionBadge />
       <KeyboardShortcuts />
+      {useStore((s) => s.showSettings) && (
+        <Settings onClose={() => useStore.getState().setShowSettings(false)} />
+      )}
 
       {/* Task panel — overlay on mobile, inline on desktop */}
       {currentSessionId && (

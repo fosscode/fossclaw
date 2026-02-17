@@ -61,6 +61,8 @@ interface AppState {
   taskPanelOpen: boolean;
   showPlaybookManager: boolean;
   showKeyboardShortcuts: boolean;
+  showSettings: boolean;
+  notificationsEnabled: boolean;
   homeResetKey: number;
   homeProvider: "claude" | "opencode";
   coderMode: boolean;
@@ -76,6 +78,9 @@ interface AppState {
   setTaskPanelOpen: (open: boolean) => void;
   setShowPlaybookManager: (open: boolean) => void;
   setShowKeyboardShortcuts: (open: boolean) => void;
+  setShowSettings: (open: boolean) => void;
+  setNotificationsEnabled: (enabled: boolean) => void;
+  setCoderMode: (enabled: boolean) => void;
   toggleCoderMode: () => void;
   newSession: (provider?: "claude" | "opencode") => void;
 
@@ -208,6 +213,8 @@ export const useStore = create<AppState>((set) => ({
   taskPanelOpen: typeof window !== "undefined" ? window.innerWidth >= 1024 : false,
   showPlaybookManager: false,
   showKeyboardShortcuts: false,
+  showSettings: false,
+  notificationsEnabled: false,
   homeResetKey: 0,
   homeProvider: "claude",
   coderMode: false,
@@ -259,6 +266,9 @@ export const useStore = create<AppState>((set) => ({
   setTaskPanelOpen: (open) => set({ taskPanelOpen: open }),
   setShowPlaybookManager: (open) => set({ showPlaybookManager: open }),
   setShowKeyboardShortcuts: (open) => set({ showKeyboardShortcuts: open }),
+  setShowSettings: (open) => set({ showSettings: open }),
+  setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
+  setCoderMode: (enabled) => set({ coderMode: enabled }),
   toggleCoderMode: () => set((s) => ({ coderMode: !s.coderMode })),
   newSession: (provider?: "claude" | "opencode") => set((s) => ({ 
     currentSessionId: null, 

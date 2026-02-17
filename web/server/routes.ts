@@ -9,9 +9,25 @@ import type { SessionStore } from "./session-store.js";
 import type { UserPreferencesStore } from "./user-preferences.js";
 import * as linear from "./linear-client.js";
 import { requireAuth, validateCredentials, createSession, deleteSession, setAuthCookie, clearAuthCookie, isAuthEnabled } from "./auth.js";
+import { UpdateChecker } from "./update-checker.js";
+import { readFileSync } from "node:fs";
 
 export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultCwd?: string, opencodeBridge?: OpenCodeBridge, store?: SessionStore, prefsStore?: UserPreferencesStore) {
   const api = new Hono();
+
+  // Read version from package.json
+  let currentVersion = "unknown";
+  try {
+    const packageJson = JSON.parse(
+      readFileSync(resolve(__dirname, "../package.json"), "utf-8")
+    );
+    currentVersion = packageJson.version;
+  } catch {
+    // Fallback to env variable if package.json not found
+    currentVersion = process.env.npm_package_version || "unknown";
+  }
+
+  const updateChecker = new UpdateChecker(currentVersion);
 
   // ─── Authentication ─────────────────────────────────────
 
@@ -55,9 +71,34 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
   api.get("/health", (c) => {
     return c.json({
       status: "ok",
-      version: process.env.npm_package_version || "unknown",
+      version: currentVersion,
       uptime: process.uptime(),
     });
+  });
+
+  // ─── Update Checker ─────────────────────────────────────
+
+  api.get("/updates/check", async (c) => {
+    try {
+      const result = await updateChecker.checkForUpdates();
+      return c.json(result);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return c.json({ error: msg }, 500);
+    }
+  });
+
+  api.post("/updates/install", async (c) => {
+    try {
+      // Start the update process (will shutdown the server)
+      updateChecker.downloadAndInstall().catch((err) => {
+        console.error("[updater] Install failed:", err);
+      });
+      return c.json({ success: true, message: "Update started, server will restart" });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return c.json({ error: msg }, 500);
+    }
   });
 
   // ─── Protected Routes ─────────────────────────────────────

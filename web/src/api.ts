@@ -183,4 +183,16 @@ export const api = {
   // Claude session resumption
   listClaudeSessions: () =>
     get<{ sessions: Array<{ sessionId: string; cwd: string; lastModified: number }> }>("/claude-sessions"),
+
+  // Updates
+  checkForUpdates: () =>
+    get<{
+      updateAvailable: boolean;
+      currentVersion: string;
+      latestVersion: string;
+      downloadUrl?: string;
+    }>("/updates/check"),
+
+  installUpdate: () =>
+    post<{ success: boolean; message: string }>("/updates/install"),
 };
