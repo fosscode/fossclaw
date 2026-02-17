@@ -70,6 +70,10 @@ jobs:
           cp web/package.json build/
           cp LICENSE build/
           cp README.md build/
+          # Update version in package.json to match the tag
+          cd build
+          bun pm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
+          cd ..
 
       - name: Prepare build directory (Windows)
         if: runner.os == 'Windows'
@@ -87,6 +91,10 @@ jobs:
           Copy-Item -Path web/package.json -Destination build/
           Copy-Item -Path LICENSE -Destination build/
           Copy-Item -Path README.md -Destination build/
+          # Update version in package.json to match the tag
+          cd build
+          bun pm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
+          cd ..
 
       - name: Install build dependencies
         working-directory: build
