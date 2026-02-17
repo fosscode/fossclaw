@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import type { ChatMessage, ContentBlock } from "../types.js";
 import { ToolBlock, getToolIcon, getToolLabel, getPreview, ToolIcon } from "./ToolBlock.js";
 import { useStore } from "../store.js";
+import { highlightCode } from "../utils/highlight.js";
 
 export function MessageBubble({ message }: { message: ChatMessage }) {
   if (message.role === "system") {
@@ -181,9 +182,11 @@ function MarkdownContent({ text }: { text: string }) {
             const { children, className } = props;
             const match = /language-(\w+)/.exec(className || "");
             const isBlock = match || (typeof children === "string" && children.includes("\n"));
+            const codeContent = typeof children === "string" ? children : String(children);
 
             if (isBlock) {
               const lang = match?.[1] || "";
+              const highlighted = useMemo(() => highlightCode(codeContent, lang), [codeContent, lang]);
               return (
                 <div className="my-2 rounded-lg overflow-hidden border border-cc-border">
                   {lang && (
@@ -191,8 +194,8 @@ function MarkdownContent({ text }: { text: string }) {
                       {lang}
                     </div>
                   )}
-                  <pre className="px-3 py-2.5 bg-cc-code-bg text-cc-code-fg text-[13px] font-mono-code leading-relaxed overflow-x-auto">
-                    <code>{children}</code>
+                  <pre className="px-3 py-2.5 bg-cc-code-bg text-[13px] font-mono-code leading-relaxed overflow-x-auto">
+                    <code dangerouslySetInnerHTML={{ __html: highlighted }} />
                   </pre>
                 </div>
               );

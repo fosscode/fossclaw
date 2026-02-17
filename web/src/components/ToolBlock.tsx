@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { highlightCode, detectLanguage } from "../utils/highlight.js";
 
 const TOOL_ICONS: Record<string, string> = {
   Bash: "terminal",
@@ -102,6 +103,10 @@ function EditToolDetail({ input, expanded = false }: { input: Record<string, unk
   const oldStr = String(input.old_string || "");
   const newStr = String(input.new_string || "");
   const maxHeightClass = expanded ? "" : "max-h-32";
+  const language = detectLanguage(filePath);
+
+  const highlightedOld = useMemo(() => oldStr ? highlightCode(oldStr, language) : "", [oldStr, language]);
+  const highlightedNew = useMemo(() => newStr ? highlightCode(newStr, language) : "", [newStr, language]);
 
   return (
     <div className="space-y-2">
@@ -109,16 +114,16 @@ function EditToolDetail({ input, expanded = false }: { input: Record<string, unk
       {oldStr && (
         <div className="rounded-lg overflow-hidden border border-cc-border">
           <div className="px-2 py-1 bg-cc-error/5 text-[10px] text-cc-error font-mono-code">removed</div>
-          <pre className={`px-3 py-2 bg-cc-code-bg text-cc-code-fg text-[11px] font-mono-code leading-relaxed overflow-x-auto ${maxHeightClass} overflow-y-auto`}>
-            {oldStr}
+          <pre className={`px-3 py-2 bg-cc-code-bg text-[11px] font-mono-code leading-relaxed overflow-x-auto ${maxHeightClass} overflow-y-auto`}>
+            <code dangerouslySetInnerHTML={{ __html: highlightedOld }} />
           </pre>
         </div>
       )}
       {newStr && (
         <div className="rounded-lg overflow-hidden border border-cc-border">
           <div className="px-2 py-1 bg-cc-success/5 text-[10px] text-cc-success font-mono-code">added</div>
-          <pre className={`px-3 py-2 bg-cc-code-bg text-cc-code-fg text-[11px] font-mono-code leading-relaxed overflow-x-auto ${maxHeightClass} overflow-y-auto`}>
-            {newStr}
+          <pre className={`px-3 py-2 bg-cc-code-bg text-[11px] font-mono-code leading-relaxed overflow-x-auto ${maxHeightClass} overflow-y-auto`}>
+            <code dangerouslySetInnerHTML={{ __html: highlightedNew }} />
           </pre>
         </div>
       )}
@@ -129,14 +134,16 @@ function EditToolDetail({ input, expanded = false }: { input: Record<string, unk
 function WriteToolDetail({ input, expanded = false }: { input: Record<string, unknown>; expanded?: boolean }) {
   const filePath = String(input.file_path || "");
   const content = String(input.content || "");
-  const preview = expanded ? content : (content.length > 500 ? content.slice(0, 500) + "..." : content);
+  const displayContent = expanded ? content : (content.length > 500 ? content.slice(0, 500) + "..." : content);
   const maxHeightClass = expanded ? "" : "max-h-40";
+  const language = detectLanguage(filePath);
+  const highlighted = useMemo(() => highlightCode(displayContent, language), [displayContent, language]);
 
   return (
     <div className="space-y-2">
       <div className="text-xs text-cc-muted font-mono-code">{filePath}</div>
-      <pre className={`px-3 py-2 rounded-lg bg-cc-code-bg text-cc-code-fg text-[11px] font-mono-code leading-relaxed overflow-x-auto ${maxHeightClass} overflow-y-auto`}>
-        {preview}
+      <pre className={`px-3 py-2 rounded-lg bg-cc-code-bg text-[11px] font-mono-code leading-relaxed overflow-x-auto ${maxHeightClass} overflow-y-auto`}>
+        <code dangerouslySetInnerHTML={{ __html: highlighted }} />
       </pre>
     </div>
   );
