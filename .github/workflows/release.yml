@@ -71,9 +71,7 @@ jobs:
           cp LICENSE build/
           cp README.md build/
           # Update version in package.json to match the tag
-          cd build
-          bun pm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
-          cd ..
+          node -e "const fs=require('fs');const p='build/package.json';const d=JSON.parse(fs.readFileSync(p,'utf8'));d.version='${{ steps.version.outputs.VERSION }}';fs.writeFileSync(p,JSON.stringify(d,null,2)+'\n');"
 
       - name: Prepare build directory (Windows)
         if: runner.os == 'Windows'
@@ -92,9 +90,7 @@ jobs:
           Copy-Item -Path LICENSE -Destination build/
           Copy-Item -Path README.md -Destination build/
           # Update version in package.json to match the tag
-          cd build
-          bun pm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
-          cd ..
+          (Get-Content build/package.json) -replace '"version": ".*"', '"version": "${{ steps.version.outputs.VERSION }}"' | Set-Content build/package.json
 
       - name: Install build dependencies
         working-directory: build
