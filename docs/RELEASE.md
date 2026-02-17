@@ -17,7 +17,23 @@ This document describes how to create a new release of FossClaw.
 
 ## Release Steps
 
-### 1. Prepare the Release
+### 1. Run Local E2E Tests (Recommended)
+
+Before creating a release, validate the build locally:
+
+```bash
+./scripts/run-e2e-tests.sh
+```
+
+This will:
+- Build the binary for your platform
+- Run comprehensive e2e tests
+- Verify binary integrity, size, and functionality
+- Test server startup and API endpoints
+
+**Note**: Local tests only run on your platform. Full cross-platform testing happens in GitHub Actions.
+
+### 2. Prepare the Release
 
 Use the release helper script:
 
@@ -36,7 +52,7 @@ This script will:
 - Create a GPG-signed tag
 - Provide instructions for pushing
 
-### 2. Push the Release
+### 3. Push the Release
 
 ```bash
 # Push the commit
@@ -46,7 +62,7 @@ git push origin main
 git push origin v<version>
 ```
 
-### 3. Automated Build Process
+### 4. Automated Build Process
 
 GitHub Actions will automatically:
 1. Build binaries for all platforms:
@@ -64,7 +80,46 @@ GitHub Actions will automatically:
 
 4. Create a GitHub Release with all binaries attached
 
-### 4. Edit Release Notes
+5. Publish to npm registry
+
+6. Build and push Docker images
+
+7. **Run E2E Release Tests** (new!):
+   - Download and test binaries on all platforms
+   - Verify npm package installation
+   - Test OpenCode integration
+   - Validate Docker images
+   - Test quick install commands
+
+**Monitor Progress**: Go to [Actions](https://github.com/fosscode/fossclaw/actions) and watch the workflows:
+- `Release` - Builds binaries
+- `Publish to NPM` - Publishes npm package
+- `Docker` - Builds Docker images
+- `E2E Release Tests` - Validates everything works
+
+### 5. Verify E2E Tests Pass
+
+**IMPORTANT**: Wait for the E2E tests to complete before announcing the release.
+
+1. Go to [Actions → E2E Release Tests](https://github.com/fosscode/fossclaw/actions/workflows/e2e-release.yml)
+2. Find the workflow run for your release tag
+3. Check that all jobs passed:
+   - ✅ Binary Download Tests
+   - ✅ NPM Install Tests
+   - ✅ OpenCode Integration
+   - ✅ Docker Image Tests (may be skipped if image not ready)
+   - ✅ Quick Install Tests
+
+**If tests fail:**
+- Review the test logs to identify the issue
+- Consider yanking the npm package if it's broken: `npm unpublish fossclaw@<version>`
+- Mark the GitHub release as draft
+- Fix the issue
+- Create a patch release (e.g., if 2.4.4 failed, release 2.4.5)
+
+**See Also**: [E2E Testing Documentation](./E2E_TESTING.md)
+
+### 6. Edit Release Notes
 
 1. Go to the [Releases page](https://github.com/YOUR_ORG/fossclaw/releases)
 2. Find your new release

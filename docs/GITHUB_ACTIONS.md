@@ -4,6 +4,14 @@ FossClaw uses GitHub Actions for comprehensive CI/CD automation. This document d
 
 ## Workflows Overview
 
+**Quick Links:**
+- [CI Workflow](#1-ci-workflow-githubworkflowsciyml) - Tests on every push/PR
+- [Release Workflow](#2-release-workflow-githubworkflowsreleaseyml) - Build binaries on tag
+- [NPM Publish](#3-npm-publish-workflow-githubworkflowsnpm-publishyml) - Publish to npm
+- [Docker Workflow](#4-docker-workflow-githubworkflowsdockeryml) - Build Docker images
+- [E2E Release Tests](#5-e2e-release-tests-githubworkflowse2e-releaseyml) - Validate releases
+- [CodeQL](#6-codeql-workflow-githubworkflowscodeqlyml) - Security scanning
+
 ### 1. CI Workflow (`.github/workflows/ci.yml`)
 
 **Trigger**: Push to `main`, Pull Requests
@@ -58,19 +66,18 @@ Builds binaries for all platforms using a matrix strategy:
 
 ---
 
-### 3. CodeQL Security Scan (`.github/workflows/codeql.yml`)
+### 3. NPM Publish (`.github/workflows/npm-publish.yml`)
 
-**Trigger**:
-- Push to `main`
-- Pull Requests
-- Weekly on Monday (cron: `0 0 * * 1`)
+**Trigger**: GitHub Release published
 
-**Purpose**: Automated security vulnerability scanning
+**Purpose**: Publish package to npm registry
 
-**Features**:
-- Scans JavaScript/TypeScript code
-- Uses `security-extended` and `security-and-quality` query suites
-- Results appear in Security → Code scanning alerts
+**Steps**:
+1. Build frontend
+2. Update package.json version
+3. Publish to npm with provenance
+
+**Required Secret**: `NPM_TOKEN`
 
 ---
 
@@ -101,22 +108,88 @@ Builds binaries for all platforms using a matrix strategy:
 
 ---
 
-### 5. NPM Publish (`.github/workflows/npm-publish.yml`)
+### 5. E2E Release Tests (`.github/workflows/e2e-release.yml`)
 
-**Trigger**: GitHub Release published
+**Trigger**: GitHub Release published, Manual workflow dispatch
 
-**Purpose**: Publish package to npm registry
+**Purpose**: End-to-end testing of release artifacts
 
-**Steps**:
-1. Build frontend
-2. Update package.json version
-3. Publish to npm with provenance
+**Jobs**:
 
-**Required Secret**: `NPM_TOKEN`
+#### Binary Download Tests
+Tests binary downloads on all platforms:
+- **macOS** (Apple Silicon)
+- **Linux** (x64)
+- **Windows** (x64)
+
+**What it tests**:
+- Download release archive from GitHub
+- Extract and verify binary exists
+- Check binary size (should be >20MB)
+- Test binary execution
+- Start server and verify it runs
+
+#### NPM Install Test
+Tests npm package installation:
+- Wait for package to be published (up to 5 minutes)
+- Test `npm install fossclaw@VERSION`
+- Test `npx fossclaw@VERSION` execution
+
+#### OpenCode Integration Test
+Tests OpenCode bridge functionality:
+- Download Linux binary
+- Start server with OpenCode enabled
+- Test `/api/health` endpoint
+- Test `/api/opencode/models` endpoint
+
+#### Docker Image Test
+Tests Docker image availability:
+- Wait for image to be published (up to 10 minutes)
+- Pull image from GHCR
+- Run container with environment variables
+- Verify container starts
+
+**Note**: Docker test is non-blocking (failures don't fail workflow)
+
+#### Quick Install Test
+Tests README installation commands:
+- Download using exact curl command from README
+- Extract to test directory
+- Verify binary is executable
+
+**Platforms**: macOS, Linux
+
+#### Results Summary
+- Aggregates all test results
+- Creates GitHub Actions summary
+- Fails if any critical tests fail
+
+**Manual Trigger**:
+```bash
+gh workflow run e2e-release.yml -f tag=v2.4.4
+```
+
+**See Also**: [E2E Testing Documentation](./E2E_TESTING.md)
 
 ---
 
-### 6. PR Labeler (`.github/workflows/labeler.yml`)
+### 6. CodeQL Security Scan (`.github/workflows/codeql.yml`)
+
+**Trigger**:
+- Push to `main`
+- Pull Requests
+- Weekly on Monday (cron: `0 0 * * 1`)
+
+**Purpose**: Automated security vulnerability scanning
+
+**Features**:
+- Scans JavaScript/TypeScript code
+- Uses `security-extended` and `security-and-quality` query suites
+- Results appear in Security → Code scanning alerts
+
+---
+
+### 7. PR Labeler (`.github/workflows/labeler.yml`)
 
 **Trigger**: Pull Request events (opened, synchronized)
 

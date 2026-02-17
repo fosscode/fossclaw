@@ -50,6 +50,18 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
 
   // ─── Protected Routes ─────────────────────────────────────
 
+  // ─── Health Check (public, no auth) ─────────────────────────────────────
+
+  api.get("/health", (c) => {
+    return c.json({
+      status: "ok",
+      version: process.env.npm_package_version || "unknown",
+      uptime: process.uptime(),
+    });
+  });
+
+  // ─── Protected Routes ─────────────────────────────────────
+
   // Apply auth middleware to all routes below
   api.use("/*", requireAuth);
 

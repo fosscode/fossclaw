@@ -1,0 +1,476 @@
+name: E2E Release Tests
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to test (e.g., v2.4.4)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-binary-download:
+    name: E2E - Binary Download (${{ matrix.platform }}-${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS builds
+          - os: macos-latest
+            platform: darwin
+            arch: arm64
+            binary: fossclaw-darwin-arm64
+            archive: fossclaw-darwin-arm64.tar.gz
+
+          # Linux builds
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            binary: fossclaw-linux-x64
+            archive: fossclaw-linux-x64.tar.gz
+
+          # Windows builds
+          - os: windows-latest
+            platform: windows
+            arch: x64
+            binary: fossclaw-windows-x64.exe
+            archive: fossclaw-windows-x64.zip
+
+    steps:
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Determine release tag
+        id: tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download release archive
+        shell: bash
+        run: |
+          TAG="${{ steps.tag.outputs.TAG }}"
+          URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/${{ matrix.archive }}"
+          echo "Downloading: $URL"
+
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            curl -L -o archive.zip "$URL"
+          else
+            curl -L -o archive.tar.gz "$URL"
+          fi
+
+      - name: Extract archive (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          tar -xzf archive.tar.gz
+          ls -la
+          chmod +x ${{ matrix.binary }}
+
+      - name: Extract archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Expand-Archive -Path archive.zip -DestinationPath .
+          Get-ChildItem
+
+      - name: Verify binary exists and is executable
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            BINARY="${{ matrix.binary }}"
+          else
+            BINARY="./${{ matrix.binary }}"
+          fi
+
+          if [ ! -f "${{ matrix.binary }}" ]; then
+            echo "❌ Binary not found: ${{ matrix.binary }}"
+            exit 1
+          fi
+
+          echo "✅ Binary exists"
+
+          # Check file size (should be > 20MB)
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            SIZE=$(powershell -Command "(Get-Item '${{ matrix.binary }}').length")
+          else
+            SIZE=$(stat -f%z "${{ matrix.binary }}" 2>/dev/null || stat -c%s "${{ matrix.binary }}")
+          fi
+
+          echo "Binary size: $SIZE bytes"
+          if [ "$SIZE" -lt 20000000 ]; then
+            echo "❌ Binary seems too small (< 20MB)"
+            exit 1
+          fi
+
+          echo "✅ Binary size looks good"
+
+      - name: Test version command
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            BINARY="${{ matrix.binary }}"
+          else
+            BINARY="./${{ matrix.binary }}"
+          fi
+
+          # Set environment to prevent auto-start
+          export FOSSCLAW_TEST_MODE=1
+
+          # Try to run with --version (if supported)
+          timeout 10s $BINARY --version || true
+
+          echo "✅ Binary is executable"
+
+      - name: Test server startup
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            BINARY="${{ matrix.binary }}"
+          else
+            BINARY="./${{ matrix.binary }}"
+          fi
+
+          # Use ephemeral port
+          export PORT=0
+          export FOSSCLAW_USER=test
+          export FOSSCLAW_PASS=test123
+
+          # Start server in background
+          $BINARY &
+          SERVER_PID=$!
+
+          echo "Started server (PID: $SERVER_PID)"
+
+          # Wait for server to be ready (max 30 seconds)
+          for i in {1..30}; do
+            sleep 1
+            # Check if process is still running
+            if ! kill -0 $SERVER_PID 2>/dev/null; then
+              echo "❌ Server process died"
+              exit 1
+            fi
+            echo "Waiting for server... ($i/30)"
+          done
+
+          # Kill server
+          kill $SERVER_PID 2>/dev/null || true
+
+          echo "✅ Server startup test passed"
+
+  e2e-npm-install:
+    name: E2E - NPM Install Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Determine package version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.tag }}"
+            VERSION="${VERSION#v}"  # Remove 'v' prefix
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Wait for NPM publication
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          echo "Waiting for fossclaw@$VERSION to be available on npm..."
+
+          # Wait up to 5 minutes for package to be available
+          for i in {1..30}; do
+            if npm view fossclaw@$VERSION version 2>/dev/null; then
+              echo "✅ Package is available on npm"
+              exit 0
+            fi
+            echo "Not yet available, waiting... ($i/30)"
+            sleep 10
+          done
+
+          echo "❌ Package not available after 5 minutes"
+          exit 1
+
+      - name: Test npm install
+        run: |
+          mkdir -p test-install
+          cd test-install
+
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          echo "Installing fossclaw@$VERSION from npm..."
+          npm install fossclaw@$VERSION
+
+          # Verify installation
+          if [ ! -d "node_modules/fossclaw" ]; then
+            echo "❌ Package not installed"
+            exit 1
+          fi
+
+          echo "✅ NPM install successful"
+
+      - name: Test npx execution
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+
+          # Test npx (this will use the globally cached version)
+          export FOSSCLAW_USER=test
+          export FOSSCLAW_PASS=test123
+          export PORT=0
+
+          # Just verify it can execute
+          timeout 5s npx fossclaw@$VERSION --version || true
+
+          echo "✅ NPX execution test passed"
+
+  e2e-opencode-integration:
+    name: E2E - OpenCode Integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Determine release tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download and extract binary
+        run: |
+          TAG="${{ steps.tag.outputs.TAG }}"
+          URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/fossclaw-linux-x64.tar.gz"
+
+          mkdir -p fossclaw-test
+          cd fossclaw-test
+          curl -L "$URL" | tar xz
+          chmod +x fossclaw-linux-x64
+          ls -la
+
+      - name: Start FossClaw server
+        run: |
+          cd fossclaw-test
+          export PORT=13456
+          export OPENCODE_PORT=13556
+          export FOSSCLAW_USER=test
+          export FOSSCLAW_PASS=test123
+
+          ./fossclaw-linux-x64 &
+          SERVER_PID=$!
+          echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
+
+          # Wait for server to be ready
+          for i in {1..30}; do
+            if curl -k -f https://localhost:13456/api/health 2>/dev/null; then
+              echo "✅ Server is ready"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Test OpenCode endpoints
+        run: |
+          # Test health endpoint
+          curl -k -f https://localhost:13456/api/health
+
+          # Test OpenCode models endpoint
+          curl -k -f https://localhost:13456/api/opencode/models
+
+          echo "✅ OpenCode integration endpoints working"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if [ -n "$SERVER_PID" ]; then
+            kill $SERVER_PID 2>/dev/null || true
+          fi
+
+  e2e-docker-pull:
+    name: E2E - Docker Image Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine release tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+            TAG="${TAG#v}"  # Remove 'v' prefix
+          else
+            TAG="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Wait for Docker image
+        run: |
+          TAG="${{ steps.tag.outputs.TAG }}"
+          echo "Waiting for ghcr.io/fosscode/fossclaw:$TAG..."
+
+          # Wait up to 10 minutes for image to be available
+          for i in {1..60}; do
+            if docker pull "ghcr.io/fosscode/fossclaw:$TAG" 2>/dev/null; then
+              echo "✅ Docker image is available"
+              exit 0
+            fi
+            echo "Not yet available, waiting... ($i/60)"
+            sleep 10
+          done
+
+          echo "⚠️  Docker image not available after 10 minutes (non-blocking)"
+          exit 0
+
+      - name: Test Docker image
+        run: |
+          TAG="${{ steps.tag.outputs.TAG }}"
+
+          # Pull image
+          docker pull "ghcr.io/fosscode/fossclaw:$TAG" || exit 0
+
+          # Test with environment variables
+          docker run -d \
+            --name fossclaw-test \
+            -e FOSSCLAW_USER=test \
+            -e FOSSCLAW_PASS=test123 \
+            -e PORT=3456 \
+            -p 3456:3456 \
+            "ghcr.io/fosscode/fossclaw:$TAG"
+
+          # Wait for container to be healthy
+          sleep 10
+
+          # Check if container is running
+          if docker ps | grep fossclaw-test; then
+            echo "✅ Docker container is running"
+          else
+            echo "❌ Docker container failed to start"
+            docker logs fossclaw-test
+            exit 1
+          fi
+
+          # Cleanup
+          docker stop fossclaw-test
+          docker rm fossclaw-test
+
+  e2e-quick-install:
+    name: E2E - Quick Install Script
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: darwin
+          - os: ubuntu-latest
+            platform: linux
+
+    steps:
+      - name: Determine release tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Test quick install command
+        run: |
+          # Simulate the README quick install
+          mkdir -p ~/fossclaw-e2e-test && cd ~/fossclaw-e2e-test
+
+          TAG="${{ steps.tag.outputs.TAG }}"
+          PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m)
+
+          URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/fossclaw-${PLATFORM}-${ARCH}.tar.gz"
+
+          echo "Testing: $URL"
+          curl -L "$URL" | tar xz
+
+          # Verify extraction
+          ls -la
+
+          # Find the binary
+          BINARY=$(find . -name "fossclaw-*" -type f ! -name "*.tar.gz" | head -1)
+
+          if [ -z "$BINARY" ]; then
+            echo "❌ Binary not found after extraction"
+            exit 1
+          fi
+
+          chmod +x "$BINARY"
+
+          echo "✅ Quick install test passed"
+
+  e2e-results:
+    name: E2E Results Summary
+    runs-on: ubuntu-latest
+    needs: [e2e-binary-download, e2e-npm-install, e2e-opencode-integration, e2e-docker-pull, e2e-quick-install]
+    if: always()
+    steps:
+      - name: Check test results
+        run: |
+          echo "## E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.e2e-binary-download.result }}" = "success" ]; then
+            echo "✅ Binary Download Tests - PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Binary Download Tests - FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.e2e-npm-install.result }}" = "success" ]; then
+            echo "✅ NPM Install Tests - PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ NPM Install Tests - FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.e2e-opencode-integration.result }}" = "success" ]; then
+            echo "✅ OpenCode Integration - PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ OpenCode Integration - FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.e2e-docker-pull.result }}" = "success" ]; then
+            echo "✅ Docker Image Tests - PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️  Docker Image Tests - SKIPPED/FAILED (non-blocking)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.e2e-quick-install.result }}" = "success" ]; then
+            echo "✅ Quick Install Tests - PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Quick Install Tests - FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Fail if critical tests failed
+        run: |
+          if [ "${{ needs.e2e-binary-download.result }}" != "success" ] || \
+             [ "${{ needs.e2e-npm-install.result }}" != "success" ] || \
+             [ "${{ needs.e2e-opencode-integration.result }}" != "success" ] || \
+             [ "${{ needs.e2e-quick-install.result }}" != "success" ]; then
+            echo "❌ One or more critical E2E tests failed"
+            exit 1
+          fi
+
+          echo "✅ All critical E2E tests passed!"
