@@ -30,9 +30,8 @@ cat > "$BUILD_DIR/entry.ts" << 'EOF'
 if (!process.env.__FOSSCLAW_PACKAGE_ROOT) {
   process.env.__FOSSCLAW_PACKAGE_ROOT = import.meta.dir;
 }
-if (!process.env.NODE_ENV) {
-  process.env.NODE_ENV = "production";
-}
+// ALWAYS force NODE_ENV to production in compiled binary
+process.env.NODE_ENV = "production";
 
 import "./server/index.ts";
 EOF
