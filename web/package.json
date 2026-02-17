@@ -1,6 +1,6 @@
 {
   "name": "fossclaw",
-  "version": "2.5.1",
+  "version": "2.5.2",
   "type": "module",
   "description": "Web UI for launching and interacting with Claude Code agents",
   "license": "MIT",

@@ -37,6 +37,7 @@ export default function App() {
   const [showPlaybookSelector, setShowPlaybookSelector] = useState(false);
   const showPlaybookManager = useStore((s) => s.showPlaybookManager);
   const setShowPlaybookManager = useStore((s) => s.setShowPlaybookManager);
+  const showSettings = useStore((s) => s.showSettings);
 
   const [authChecked, setAuthChecked] = useState(false);
   const [authRequired, setAuthRequired] = useState(false);
@@ -202,7 +203,7 @@ export default function App() {
 
       <VersionBadge />
       <KeyboardShortcuts />
-      {useStore((s) => s.showSettings) && (
+      {showSettings && (
         <Settings onClose={() => useStore.getState().setShowSettings(false)} />
       )}
 

@@ -3,7 +3,13 @@ import { useStore } from "../store";
 import { api } from "../api";
 
 export function Settings({ onClose }: { onClose: () => void }) {
-  const { darkMode, setDarkMode, coderMode, setCoderMode, notificationsEnabled, setNotificationsEnabled } = useStore();
+  const darkMode = useStore((s) => s.darkMode);
+  const setDarkMode = useStore((s) => s.setDarkMode);
+  const coderMode = useStore((s) => s.coderMode);
+  const setCoderMode = useStore((s) => s.setCoderMode);
+  const notificationsEnabled = useStore((s) => s.notificationsEnabled);
+  const setNotificationsEnabled = useStore((s) => s.setNotificationsEnabled);
+
   const [updateStatus, setUpdateStatus] = useState<{
     checking: boolean;
     updateAvailable: boolean;

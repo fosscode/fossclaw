@@ -1,6 +1,6 @@
 {
   "name": "fossclaw",
-  "version": "2.4.4",
+  "version": "2.5.2",
   "private": true,
   "description": "Web UI for Claude Code agents — FossClaw",
   "scripts": {
