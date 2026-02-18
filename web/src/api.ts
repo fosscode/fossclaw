@@ -173,6 +173,10 @@ export const api = {
       `/linear/members?team=${encodeURIComponent(team)}`,
     ),
 
+  // Notifications
+  testNotification: () =>
+    post<{ ok: boolean }>("/notifications/test"),
+
   // Preferences
   getPreferences: () =>
     get<Record<string, unknown>>("/preferences"),

@@ -13,6 +13,8 @@ export function Settings({ onClose }: { onClose: () => void }) {
   const setWebhookUrl = useStore((s) => s.setWebhookUrl);
   const [webhookInput, setWebhookInput] = useState(webhookUrl);
   useEffect(() => { setWebhookInput(webhookUrl); }, [webhookUrl]);
+  const [testStatus, setTestStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
+  const [testError, setTestError] = useState<string>("");
 
   const [updateStatus, setUpdateStatus] = useState<{
     checking: boolean;
@@ -136,11 +138,37 @@ export function Settings({ onClose }: { onClose: () => void }) {
                   <input
                     type="url"
                     value={webhookInput}
-                    onChange={(e) => setWebhookInput(e.target.value)}
+                    onChange={(e) => { setWebhookInput(e.target.value); setTestStatus("idle"); }}
                     onBlur={() => setWebhookUrl(webhookInput)}
                     placeholder="https://hooks.slack.com/... or https://discord.com/api/webhooks/..."
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
                   />
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      onClick={async () => {
+                        if (webhookInput !== webhookUrl) setWebhookUrl(webhookInput);
+                        setTestStatus("sending");
+                        setTestError("");
+                        try {
+                          await api.testNotification();
+                          setTestStatus("ok");
+                        } catch (err) {
+                          setTestStatus("error");
+                          setTestError(err instanceof Error ? err.message : "Failed");
+                        }
+                      }}
+                      disabled={testStatus === "sending" || !webhookInput}
+                      className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {testStatus === "sending" ? "Sending..." : "Test"}
+                    </button>
+                    {testStatus === "ok" && (
+                      <span className="text-sm text-green-600 dark:text-green-400">Sent!</span>
+                    )}
+                    {testStatus === "error" && (
+                      <span className="text-sm text-red-600 dark:text-red-400">{testError}</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </section>

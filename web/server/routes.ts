@@ -241,6 +241,42 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
     }
   });
 
+  // ─── Notifications ─────────────────────────────────────
+
+  api.post("/notifications/test", async (c) => {
+    if (!prefsStore) return c.json({ error: "Preferences not available" }, 501);
+    const prefs = await prefsStore.load();
+    if (!prefs.notificationsEnabled) {
+      return c.json({ error: "Notifications are disabled" }, 400);
+    }
+    const url = prefs.webhookUrl?.trim();
+    if (!url) {
+      return c.json({ error: "No webhook URL configured" }, 400);
+    }
+    const message = "FossClaw: Test notification";
+    const payload = {
+      text: message,
+      content: message,
+      event: "test",
+      sessionId: "test",
+      sessionName: "Test",
+      timestamp: new Date().toISOString(),
+    };
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        return c.json({ error: `Webhook returned ${res.status}` }, 502);
+      }
+      return c.json({ ok: true });
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : "Webhook request failed" }, 502);
+    }
+  });
+
   // ─── User Preferences ─────────────────────────────────────
 
   api.get("/preferences", async (c) => {
