@@ -27,7 +27,8 @@ function readFileAsBase64(file: File): Promise<{ base64: string; mediaType: stri
 }
 
 const MODELS = [
-  { value: "claude-sonnet-4-5-20250929", label: "Sonnet", icon: "\u25D0" },
+  { value: "claude-sonnet-4-6", label: "Sonnet 4.6", icon: "\u25D0" },
+  { value: "claude-sonnet-4-5-20250929", label: "Sonnet 4.5", icon: "\u25D0" },
   { value: "claude-opus-4-6", label: "Opus", icon: "\u2733" },
   { value: "claude-haiku-4-5-20251001", label: "Haiku", icon: "\u26A1" },
 ];
