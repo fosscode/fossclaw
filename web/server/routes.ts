@@ -2,17 +2,22 @@ import { Hono } from "hono";
 import { readdir } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { homedir } from "node:os";
+import { randomUUID } from "node:crypto";
 import type { CliLauncher } from "./cli-launcher.js";
 import type { WsBridge } from "./ws-bridge.js";
 import type { OpenCodeBridge } from "./opencode-bridge.js";
 import type { SessionStore } from "./session-store.js";
 import type { UserPreferencesStore } from "./user-preferences.js";
+import type { CronJobStore } from "./cron-store.js";
+import type { CronScheduler } from "./cron-scheduler.js";
+import type { CronJob } from "./cron-types.js";
 import * as linear from "./linear-client.js";
 import { requireAuth, validateCredentials, createSession, deleteSession, setAuthCookie, clearAuthCookie, isAuthEnabled } from "./auth.js";
 import { UpdateChecker } from "./update-checker.js";
+import { OllamaClient } from "./ollama-client.js";
 import { readFileSync } from "node:fs";
 
-export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultCwd?: string, opencodeBridge?: OpenCodeBridge, store?: SessionStore, prefsStore?: UserPreferencesStore) {
+export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultCwd?: string, opencodeBridge?: OpenCodeBridge, store?: SessionStore, prefsStore?: UserPreferencesStore, cronStore?: CronJobStore, cronScheduler?: CronScheduler) {
   const api = new Hono();
 
   // Read version from package.json
@@ -295,6 +300,26 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
     const body = await c.req.json().catch(() => ({}));
     prefsStore.save(body);
     const updated = await prefsStore.load();
+
+    // If Ollama config changed, update the WsBridge client dynamically
+    if (typeof body.ollamaUrl === "string" || typeof body.ollamaModel === "string") {
+      const url = updated.ollamaUrl;
+      if (url) {
+        const client = new OllamaClient(url, updated.ollamaModel || undefined);
+        const available = await client.isAvailable().catch(() => false);
+        if (available) {
+          wsBridge.setOllama(client);
+          console.log(`[ollama] Reconfigured: ${url} (model: ${updated.ollamaModel || "default"})`);
+        } else {
+          wsBridge.setOllama(null);
+          console.warn(`[ollama] Service at ${url} not available, disabled`);
+        }
+      } else {
+        wsBridge.setOllama(null);
+        console.log(`[ollama] Disabled (URL cleared)`);
+      }
+    }
+
     return c.json(updated);
   });
 
@@ -527,6 +552,95 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
       console.error("[routes] Failed to list Claude sessions:", msg);
       return c.json({ error: msg }, 500);
     }
+  });
+
+  // ─── Cron Jobs ─────────────────────────────────────
+
+  api.get("/cron/jobs", async (c) => {
+    if (!cronStore) return c.json({ error: "Cron not configured" }, 501);
+    const jobs = await cronStore.loadJobs();
+    return c.json({ jobs });
+  });
+
+  api.get("/cron/jobs/:id", async (c) => {
+    if (!cronStore) return c.json({ error: "Cron not configured" }, 501);
+    const job = await cronStore.getJob(c.req.param("id"));
+    if (!job) return c.json({ error: "Job not found" }, 404);
+    return c.json(job);
+  });
+
+  api.post("/cron/jobs", async (c) => {
+    if (!cronStore) return c.json({ error: "Cron not configured" }, 501);
+    const body = await c.req.json().catch(() => ({}));
+    if (!body.name || !body.type || !body.config) {
+      return c.json({ error: "name, type, and config are required" }, 400);
+    }
+    const job: CronJob = {
+      id: randomUUID(),
+      name: body.name,
+      type: body.type,
+      enabled: body.enabled ?? false,
+      intervalSeconds: body.intervalSeconds || 300,
+      config: body.config,
+      model: body.model,
+      permissionMode: body.permissionMode,
+      lastRunAt: null,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    await cronStore.addJob(job);
+    return c.json(job, 201);
+  });
+
+  api.patch("/cron/jobs/:id", async (c) => {
+    if (!cronStore) return c.json({ error: "Cron not configured" }, 501);
+    const body = await c.req.json().catch(() => ({}));
+    const updated = await cronStore.updateJob(c.req.param("id"), {
+      ...body,
+      updatedAt: Date.now(),
+    });
+    if (!updated) return c.json({ error: "Job not found" }, 404);
+    return c.json(updated);
+  });
+
+  api.delete("/cron/jobs/:id", async (c) => {
+    if (!cronStore) return c.json({ error: "Cron not configured" }, 501);
+    const removed = await cronStore.removeJob(c.req.param("id"));
+    if (!removed) return c.json({ error: "Job not found" }, 404);
+    return c.json({ ok: true });
+  });
+
+  api.post("/cron/jobs/:id/toggle", async (c) => {
+    if (!cronStore) return c.json({ error: "Cron not configured" }, 501);
+    const job = await cronStore.getJob(c.req.param("id"));
+    if (!job) return c.json({ error: "Job not found" }, 404);
+    const updated = await cronStore.updateJob(job.id, { enabled: !job.enabled, updatedAt: Date.now() });
+    return c.json(updated);
+  });
+
+  api.post("/cron/jobs/:id/trigger", async (c) => {
+    if (!cronScheduler) return c.json({ error: "Cron not configured" }, 501);
+    const run = await cronScheduler.triggerJob(c.req.param("id"));
+    if (!run) return c.json({ error: "Job not found" }, 404);
+    return c.json(run);
+  });
+
+  api.get("/cron/jobs/:id/runs", async (c) => {
+    if (!cronStore) return c.json({ error: "Cron not configured" }, 501);
+    const limit = Number(c.req.query("limit")) || 20;
+    const runs = await cronStore.getRuns(c.req.param("id"), limit);
+    return c.json({ runs });
+  });
+
+  api.post("/cron/jobs/:id/reset", async (c) => {
+    if (!cronStore) return c.json({ error: "Cron not configured" }, 501);
+    await cronStore.clearSeenKeys(c.req.param("id"));
+    return c.json({ ok: true });
+  });
+
+  api.get("/cron/status", (c) => {
+    if (!cronScheduler) return c.json({ error: "Cron not configured" }, 501);
+    return c.json(cronScheduler.getStatus());
   });
 
   return api;

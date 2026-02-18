@@ -1,4 +1,4 @@
-import type { SdkSessionInfo, LinearIssue } from "./types.js";
+import type { SdkSessionInfo, LinearIssue, CronJob, CronRun } from "./types.js";
 
 const BASE = "/api";
 
@@ -199,4 +199,35 @@ export const api = {
 
   installUpdate: () =>
     post<{ success: boolean; message: string }>("/updates/install"),
+
+  // Cron Jobs
+  listCronJobs: () =>
+    get<{ jobs: CronJob[] }>("/cron/jobs"),
+
+  getCronJob: (id: string) =>
+    get<CronJob>(`/cron/jobs/${encodeURIComponent(id)}`),
+
+  createCronJob: (job: Partial<CronJob>) =>
+    post<CronJob>("/cron/jobs", job),
+
+  updateCronJob: (id: string, updates: Partial<CronJob>) =>
+    patch<CronJob>(`/cron/jobs/${encodeURIComponent(id)}`, updates),
+
+  deleteCronJob: (id: string) =>
+    del(`/cron/jobs/${encodeURIComponent(id)}`),
+
+  toggleCronJob: (id: string) =>
+    post<CronJob>(`/cron/jobs/${encodeURIComponent(id)}/toggle`),
+
+  triggerCronJob: (id: string) =>
+    post<CronRun>(`/cron/jobs/${encodeURIComponent(id)}/trigger`),
+
+  getCronJobRuns: (id: string, limit?: number) =>
+    get<{ runs: CronRun[] }>(`/cron/jobs/${encodeURIComponent(id)}/runs${limit ? `?limit=${limit}` : ""}`),
+
+  resetCronJob: (id: string) =>
+    post(`/cron/jobs/${encodeURIComponent(id)}/reset`),
+
+  getCronStatus: () =>
+    get<{ running: boolean; activeJobs: string[] }>("/cron/status"),
 };

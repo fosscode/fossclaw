@@ -17,6 +17,14 @@ export function Settings({ onClose }: { onClose: () => void }) {
   const setAppUrl = useStore((s) => s.setAppUrl);
   const [appUrlInput, setAppUrlInput] = useState(appUrl);
   useEffect(() => { setAppUrlInput(appUrl); }, [appUrl]);
+  const ollamaUrl = useStore((s) => s.ollamaUrl);
+  const setOllamaUrl = useStore((s) => s.setOllamaUrl);
+  const [ollamaUrlInput, setOllamaUrlInput] = useState(ollamaUrl);
+  useEffect(() => { setOllamaUrlInput(ollamaUrl); }, [ollamaUrl]);
+  const ollamaModel = useStore((s) => s.ollamaModel);
+  const setOllamaModel = useStore((s) => s.setOllamaModel);
+  const [ollamaModelInput, setOllamaModelInput] = useState(ollamaModel);
+  useEffect(() => { setOllamaModelInput(ollamaModel); }, [ollamaModel]);
   const [testStatus, setTestStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
   const [testError, setTestError] = useState<string>("");
 
@@ -189,6 +197,42 @@ export function Settings({ onClose }: { onClose: () => void }) {
                       <span className="text-sm text-red-600 dark:text-red-400">{testError}</span>
                     )}
                   </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Session Naming */}
+            <section>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Session Naming</h3>
+              <div className="space-y-3">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Sessions are automatically named from your first message. Optionally connect an Ollama instance for improved names via LLM.
+                </p>
+                <div className="space-y-1">
+                  <label className="block text-gray-700 dark:text-gray-300 text-sm">
+                    Ollama URL
+                  </label>
+                  <input
+                    type="url"
+                    value={ollamaUrlInput}
+                    onChange={(e) => setOllamaUrlInput(e.target.value)}
+                    onBlur={() => setOllamaUrl(ollamaUrlInput)}
+                    placeholder="http://localhost:11434"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-gray-700 dark:text-gray-300 text-sm">
+                    Ollama Model
+                  </label>
+                  <input
+                    type="text"
+                    value={ollamaModelInput}
+                    onChange={(e) => setOllamaModelInput(e.target.value)}
+                    onBlur={() => setOllamaModel(ollamaModelInput)}
+                    placeholder="llama3.2:3b"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
+                  />
                 </div>
               </div>
             </section>

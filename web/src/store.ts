@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { SessionState, PermissionRequest, ChatMessage, SdkSessionInfo, TaskItem, LinearIssue, Playbook } from "./types.js";
+import type { SessionState, PermissionRequest, ChatMessage, SdkSessionInfo, TaskItem, LinearIssue, Playbook, CronJob } from "./types.js";
 
 interface AppState {
   // Sessions
@@ -65,11 +65,17 @@ interface AppState {
   notificationsEnabled: boolean;
   webhookUrl: string;
   appUrl: string;
+  ollamaUrl: string;
+  ollamaModel: string;
   homeResetKey: number;
   homeProvider: "claude" | "opencode";
   coderMode: boolean;
   recentDirs: string[];
   defaultModels: Map<"claude" | "opencode", string>;
+
+  // Cron Jobs
+  cronJobs: CronJob[];
+  showCronPanel: boolean;
 
   // Actions
   setDarkMode: (v: boolean) => void;
@@ -84,6 +90,8 @@ interface AppState {
   setNotificationsEnabled: (enabled: boolean) => void;
   setWebhookUrl: (url: string) => void;
   setAppUrl: (url: string) => void;
+  setOllamaUrl: (url: string) => void;
+  setOllamaModel: (model: string) => void;
   setCoderMode: (enabled: boolean) => void;
   toggleCoderMode: () => void;
   newSession: (provider?: "claude" | "opencode") => void;
@@ -104,6 +112,10 @@ interface AppState {
   setPrefilledText: (text: string | null) => void;
   setPrefilledIssue: (issue: LinearIssue | null) => void;
   clearPrefill: () => void;
+
+  // Cron actions
+  setCronJobs: (jobs: CronJob[]) => void;
+  setShowCronPanel: (open: boolean) => void;
 
   // Preferences
   loadPreferences: () => Promise<void>;
@@ -221,6 +233,8 @@ export const useStore = create<AppState>((set) => ({
   notificationsEnabled: false,
   webhookUrl: "",
   appUrl: "",
+  ollamaUrl: "",
+  ollamaModel: "",
   homeResetKey: 0,
   homeProvider: "claude",
   coderMode: false,
@@ -240,6 +254,14 @@ export const useStore = create<AppState>((set) => ({
       return new Map();
     }
   })(),
+
+  // Cron Jobs
+  cronJobs: [],
+  showCronPanel: false,
+
+  // Cron actions
+  setCronJobs: (jobs) => set({ cronJobs: jobs }),
+  setShowCronPanel: (open) => set({ showCronPanel: open }),
 
   setDarkMode: (v) => {
     localStorage.setItem("cc-dark-mode", String(v));
@@ -285,6 +307,14 @@ export const useStore = create<AppState>((set) => ({
     set({ appUrl: url });
     import("./api.js").then(({ api }) => api.updatePreferences({ appUrl: url }).catch(() => {}));
   },
+  setOllamaUrl: (url) => {
+    set({ ollamaUrl: url });
+    import("./api.js").then(({ api }) => api.updatePreferences({ ollamaUrl: url }).catch(() => {}));
+  },
+  setOllamaModel: (model) => {
+    set({ ollamaModel: model });
+    import("./api.js").then(({ api }) => api.updatePreferences({ ollamaModel: model }).catch(() => {}));
+  },
   setCoderMode: (enabled) => set({ coderMode: enabled }),
   toggleCoderMode: () => set((s) => ({ coderMode: !s.coderMode })),
   newSession: (provider?: "claude" | "opencode") => set((s) => ({ 
@@ -328,6 +358,12 @@ export const useStore = create<AppState>((set) => ({
       }
       if (typeof prefs.appUrl === "string") {
         updates.appUrl = prefs.appUrl;
+      }
+      if (typeof prefs.ollamaUrl === "string") {
+        updates.ollamaUrl = prefs.ollamaUrl;
+      }
+      if (typeof prefs.ollamaModel === "string") {
+        updates.ollamaModel = prefs.ollamaModel;
       }
       if (prefs.defaultModels && typeof prefs.defaultModels === "object") {
         const validEntries = Object.entries(prefs.defaultModels).filter(

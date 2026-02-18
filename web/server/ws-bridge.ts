@@ -18,6 +18,7 @@ import type {
 import type { SessionStore } from "./session-store.js";
 import type { OllamaClient } from "./ollama-client.js";
 import type { UserPreferencesStore } from "./user-preferences.js";
+import { extractSessionName } from "./smart-namer.js";
 
 // ─── WebSocket data tags ──────────────────────────────────────────────────────
 
@@ -86,6 +87,10 @@ export class WsBridge {
 
   setPrefsStore(prefsStore: UserPreferencesStore) {
     this.prefsStore = prefsStore;
+  }
+
+  setOllama(client: OllamaClient | null) {
+    this.ollama = client;
   }
 
   // ── Session management ──────────────────────────────────────────────────
@@ -613,25 +618,37 @@ export class WsBridge {
     this.updateActivity(session.id);
 
     // Auto-name session on first user message
-    if (!session.firstMessageReceived && this.ollama && this.store) {
+    if (!session.firstMessageReceived && this.store) {
       session.firstMessageReceived = true;
 
-      // Generate name asynchronously (don't block the message)
-      this.ollama.generateSessionName(msg.content).then((name) => {
-        if (name) {
-          console.log(`[ws-bridge] Auto-naming session ${session.id}: "${name}"`);
-          // Load current meta and update with the generated name
-          this.store?.load(session.id).then((persisted) => {
-            if (persisted) {
-              this.store?.saveMeta(session.id, { ...persisted.meta, sessionName: name });
-            }
-          }).catch((err) => {
-            console.error(`[ws-bridge] Failed to update session name:`, err);
-          });
+      // Immediately set a smart extracted name (no LLM needed)
+      const smartName = extractSessionName(msg.content);
+      console.log(`[ws-bridge] Auto-naming session ${session.id}: "${smartName}"`);
+      this.store.load(session.id).then((persisted) => {
+        if (persisted && !persisted.meta.sessionName) {
+          this.store?.saveMeta(session.id, { ...persisted.meta, sessionName: smartName });
         }
       }).catch((err) => {
-        console.error(`[ws-bridge] Failed to generate session name:`, err);
+        console.error(`[ws-bridge] Failed to update session name:`, err);
       });
+
+      // If Ollama is available, upgrade the name asynchronously
+      if (this.ollama) {
+        this.ollama.generateSessionName(msg.content).then((ollamaName) => {
+          if (ollamaName) {
+            console.log(`[ws-bridge] Ollama upgraded session name ${session.id}: "${ollamaName}"`);
+            this.store?.load(session.id).then((persisted) => {
+              if (persisted) {
+                this.store?.saveMeta(session.id, { ...persisted.meta, sessionName: ollamaName });
+              }
+            }).catch((err) => {
+              console.error(`[ws-bridge] Failed to update session name:`, err);
+            });
+          }
+        }).catch((err) => {
+          console.error(`[ws-bridge] Ollama naming failed (smart name kept):`, err);
+        });
+      }
     }
 
     // Build content: if images are present, use content block array; otherwise plain string

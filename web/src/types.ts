@@ -65,3 +65,16 @@ export interface Playbook {
   autoMapLabels: string[];
   description?: string;
 }
+
+// Re-export cron types for frontend use
+export type {
+  CronJob,
+  CronJobType,
+  CronRun,
+  CronRunStatus,
+  CronJobConfigMap,
+  GitHubPRReviewConfig,
+  GitHubCommentsCIConfig,
+  E2ETestingConfig,
+  LinearAgentConfig,
+} from "../server/cron-types.js";

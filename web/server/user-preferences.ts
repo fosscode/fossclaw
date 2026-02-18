@@ -19,6 +19,8 @@ export interface UserPreferences {
   webhookUrl: string;
   notificationsEnabled: boolean;
   appUrl: string;
+  ollamaUrl: string;
+  ollamaModel: string;
 }
 
 const DEFAULTS: UserPreferences = {
@@ -30,6 +32,8 @@ const DEFAULTS: UserPreferences = {
   webhookUrl: "",
   notificationsEnabled: false,
   appUrl: "",
+  ollamaUrl: "",
+  ollamaModel: "",
 };
 
 export class UserPreferencesStore {

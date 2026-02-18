@@ -16,6 +16,8 @@ import { OllamaClient } from "./ollama-client.js";
 import { generateSelfSignedCert } from "./cert-generator.js";
 import { isAuthEnabled, validateSession, getSessionFromRequest, setAuthCredentials } from "./auth.js";
 import { ensureCredentials, getCredentialsFilePath } from "./credential-generator.js";
+import { CronJobStore } from "./cron-store.js";
+import { CronScheduler } from "./cron-scheduler.js";
 import type { SocketData } from "./ws-bridge.js";
 import type { ServerWebSocket } from "bun";
 
@@ -41,25 +43,31 @@ const sessionTTLMs = sessionTTLDays * 24 * 60 * 60 * 1000;
 const store = new FileSessionStore();
 const prefsStore = new UserPreferencesStore();
 
-// Ollama client for auto-naming sessions
-const ollamaUrl = process.env.OLLAMA_URL;
-const ollamaModel = process.env.OLLAMA_MODEL;
+// Ollama client for auto-naming sessions (env vars override, then preferences)
 let ollamaClient: OllamaClient | undefined;
 
-if (ollamaUrl) {
-  ollamaClient = new OllamaClient(ollamaUrl, ollamaModel);
-  // Check if Ollama is available at startup
-  ollamaClient.isAvailable().then((available) => {
-    if (available) {
-      console.log(`[ollama] Auto-naming enabled (${ollamaUrl}, model: ${ollamaModel || "llama3.2:latest"})`);
-    } else {
-      console.warn(`[ollama] Service at ${ollamaUrl} is not available or model not found, auto-naming disabled`);
+{
+  const envUrl = process.env.OLLAMA_URL;
+  const envModel = process.env.OLLAMA_MODEL;
+  // Load preferences to check for saved Ollama config
+  const savedPrefs = await prefsStore.load();
+  const ollamaUrl = envUrl || savedPrefs.ollamaUrl;
+  const ollamaModel = envModel || savedPrefs.ollamaModel;
+
+  if (ollamaUrl) {
+    ollamaClient = new OllamaClient(ollamaUrl, ollamaModel || undefined);
+    ollamaClient.isAvailable().then((available) => {
+      if (available) {
+        console.log(`[ollama] LLM naming enabled (${ollamaUrl}, model: ${ollamaModel || "default"})`);
+      } else {
+        console.warn(`[ollama] Service at ${ollamaUrl} is not available or model not found, LLM naming disabled`);
+        ollamaClient = undefined;
+      }
+    }).catch(() => {
+      console.warn(`[ollama] Failed to connect to ${ollamaUrl}, LLM naming disabled`);
       ollamaClient = undefined;
-    }
-  }).catch(() => {
-    console.warn(`[ollama] Failed to connect to ${ollamaUrl}, auto-naming disabled`);
-    ollamaClient = undefined;
-  });
+    });
+  }
 }
 
 const wsBridge = new WsBridge(store, ollamaClient);
@@ -72,6 +80,10 @@ const opencodeBridge = new OpenCodeBridge(opencodePort);
 opencodeBridge.setWsBridge(wsBridge);
 launcher.setOpenCodeBridge(opencodeBridge);
 
+// Cron job scheduler
+const cronStore = new CronJobStore();
+const cronScheduler = new CronScheduler(cronStore, launcher, wsBridge, store);
+
 // ─── Authentication setup — ensure credentials exist ────────────────────────
 const credentials = await ensureCredentials();
 setAuthCredentials(credentials.username, credentials.password);
@@ -79,7 +91,7 @@ setAuthCredentials(credentials.username, credentials.password);
 const app = new Hono();
 
 app.use("/api/*", cors());
-app.route("/api", createRoutes(launcher, wsBridge, defaultCwd, opencodeBridge, store, prefsStore));
+app.route("/api", createRoutes(launcher, wsBridge, defaultCwd, opencodeBridge, store, prefsStore, cronStore, cronScheduler));
 
 // In production, serve built frontend using absolute path (works when installed as npm package)
 if (process.env.NODE_ENV === "production") {
@@ -139,6 +151,14 @@ for (const session of persisted) {
 }
 if (restored > 0 || archived > 0) {
   console.log(`[startup] Restored ${restored} live session(s) and ${archived} archived session(s) from disk`);
+}
+
+// ─── Start cron scheduler ────────────────────────────────────────────────────
+cronScheduler.start();
+const cronJobs = await cronStore.loadJobs();
+const enabledCronJobs = cronJobs.filter((j) => j.enabled).length;
+if (cronJobs.length > 0) {
+  console.log(`[cron] Loaded ${cronJobs.length} cron job(s) (${enabledCronJobs} enabled)`);
 }
 
 // ─── TLS setup ───────────────────────────────────────────────────────────────
@@ -231,10 +251,12 @@ console.log(`  Default CWD:       ${defaultCwd}`);
 console.log(`  HTTPS:             ${httpsStatus}`);
 console.log(`  Auth:              enabled (mandatory, username: ${credentials.username})`);
 console.log(`  Credentials file:  ${getCredentialsFilePath()}`);
-console.log(`  Auto-naming:       ${ollamaUrl ? "enabled" : "disabled (set OLLAMA_URL to enable)"}`);
+console.log(`  Auto-naming:       smart extraction (always on)${ollamaClient ? " + Ollama LLM" : ""}`);
 console.log(`  Session TTL:       ${sessionTTLMs > 0 ? `${sessionTTLDays} days` : "disabled (set FOSSCLAW_SESSION_TTL_DAYS to enable)"}`);
 console.log(`  CLI WebSocket:     ${wsProtocol}://localhost:${server.port}/ws/cli/:sessionId`);
 console.log(`  Browser WebSocket: ${wsProtocol}://localhost:${server.port}/ws/browser/:sessionId`);
+console.log(`  GitHub Token:      ${process.env.GITHUB_TOKEN ? "configured" : "not set (cron PR/CI features need GITHUB_TOKEN)"}`);
+console.log(`  Cron Jobs:         ${enabledCronJobs} of ${cronJobs.length} enabled`);
 
 // In dev mode, log that Vite should be run separately
 if (process.env.NODE_ENV !== "production") {
@@ -296,6 +318,8 @@ if (sessionTTLMs > 0) {
 // ─── Graceful shutdown ───────────────────────────────────────────────────────
 async function shutdown() {
   console.log("[shutdown] Flushing stores...");
+  cronScheduler.stop();
+  await cronStore.flush();
   await store.flush();
   await prefsStore.flush();
   server.stop();

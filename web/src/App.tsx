@@ -11,6 +11,7 @@ import { PlaybookManager } from "./components/PlaybookManager.js";
 import { VersionBadge } from "./components/VersionBadge.js";
 import { KeyboardShortcuts } from "./components/KeyboardShortcuts.js";
 import { Settings } from "./components/Settings.js";
+import { CronPanel } from "./components/CronPanel.js";
 import { Login } from "./components/Login.js";
 import { api } from "./api.js";
 import { connectSession, disconnectSession } from "./ws.js";
@@ -39,6 +40,7 @@ export default function App() {
   const showPlaybookManager = useStore((s) => s.showPlaybookManager);
   const setShowPlaybookManager = useStore((s) => s.setShowPlaybookManager);
   const showSettings = useStore((s) => s.showSettings);
+  const showCronPanel = useStore((s) => s.showCronPanel);
 
   const [authChecked, setAuthChecked] = useState(false);
   const [authRequired, setAuthRequired] = useState(false);
@@ -229,6 +231,9 @@ export default function App() {
       <KeyboardShortcuts />
       {showSettings && (
         <Settings onClose={() => useStore.getState().setShowSettings(false)} />
+      )}
+      {showCronPanel && (
+        <CronPanel onClose={() => useStore.getState().setShowCronPanel(false)} />
       )}
 
       {/* Task panel — overlay on mobile, inline on desktop */}

@@ -3,6 +3,7 @@ import { useStore } from "../store.js";
 import { api } from "../api.js";
 import { connectSession, disconnectSession } from "../ws.js";
 import { ThemeSelector } from "./ThemeSelector.js";
+import { LinearIssueList } from "./LinearIssueList.js";
 import { requestNotificationPermission } from "../utils/notifications.js";
 
 function useSidebarResize() {
@@ -59,6 +60,8 @@ export function Sidebar() {
   const pendingPermissions = useStore((s) => s.pendingPermissions);
   const sessionContext = useStore((s) => s.sessionContext);
   const setSessionContext = useStore((s) => s.setSessionContext);
+  const sidebarTab = useStore((s) => s.sidebarTab);
+  const setSidebarTab = useStore((s) => s.setSidebarTab);
 
   // Poll for SDK sessions on mount
   useEffect(() => {
@@ -256,9 +259,28 @@ export function Sidebar() {
 
       </div>
 
+      {/* Tab switcher when Linear is active */}
+      {sidebarTab === "linear" && (
+        <div className="flex px-2 gap-1 mb-1">
+          <button
+            onClick={() => setSidebarTab("sessions")}
+            className="flex-1 py-1.5 text-xs font-medium rounded-lg text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+          >
+            Sessions
+          </button>
+          <button
+            className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-cc-active text-cc-fg cursor-default"
+          >
+            Linear
+          </button>
+        </div>
+      )}
+
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto px-2 pb-2">
-        {sessionList.length === 0 ? (
+        {sidebarTab === "linear" ? (
+          <LinearIssueList />
+        ) : sessionList.length === 0 ? (
           <p className="px-3 py-8 text-xs text-cc-muted text-center leading-relaxed">
             No sessions yet.
           </p>
@@ -453,6 +475,15 @@ export function Sidebar() {
       {/* Footer: theme controls */}
       <div className="p-3 border-t border-cc-border space-y-1">
         <ThemeSelector />
+        <button
+          onClick={() => useStore.getState().setShowCronPanel(true)}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-sm text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+          </svg>
+          <span>Cron Jobs</span>
+        </button>
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -507,6 +538,27 @@ export function Sidebar() {
                 </svg>
                 <span>Coder View</span>
                 {coderMode && (
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 ml-auto">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  setSidebarTab(sidebarTab === "linear" ? "sessions" : "linear");
+                  setMenuOpen(false);
+                }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors cursor-pointer ${
+                  sidebarTab === "linear"
+                    ? "bg-cc-primary/10 text-cc-primary"
+                    : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
+                }`}
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                </svg>
+                <span>Linear Issues</span>
+                {sidebarTab === "linear" && (
                   <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 ml-auto">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>

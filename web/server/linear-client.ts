@@ -386,3 +386,35 @@ export async function listMembers(teamKey: string): Promise<{ id: string; name: 
   );
   return data.team.members.nodes;
 }
+
+export interface LinearComment {
+  id: string;
+  body: string;
+  createdAt: string;
+  user: { name: string } | null;
+}
+
+export async function listIssueComments(issueIdentifier: string): Promise<LinearComment[]> {
+  const data = await linearQuery<{
+    issue: {
+      comments: {
+        nodes: Array<{
+          id: string;
+          body: string;
+          createdAt: string;
+          user: { name: string } | null;
+        }>;
+      };
+    };
+  }>(
+    `query($id: String!) {
+      issue(id: $id) {
+        comments(first: 50, orderBy: createdAt) {
+          nodes { id body createdAt user { name } }
+        }
+      }
+    }`,
+    { id: issueIdentifier },
+  );
+  return data.issue.comments.nodes;
+}
