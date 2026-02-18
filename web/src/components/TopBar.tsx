@@ -47,13 +47,24 @@ export function TopBar() {
         {/* Connection status */}
         {currentSessionId && (
           <div className="flex items-center gap-1.5">
-            <span
-              className={`w-1.5 h-1.5 rounded-full ${
-                isConnected ? "bg-cc-success" : "bg-cc-muted opacity-40"
-              }`}
-            />
+            <span className="relative flex items-center justify-center w-3 h-3">
+              {!isConnected ? (
+                <span className="w-1.5 h-1.5 rounded-full bg-cc-muted opacity-40" />
+              ) : status === "running" ? (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-cc-running" />
+                  <svg className="absolute inset-0 w-3 h-3 animate-[spin-ring_1.2s_linear_infinite]" viewBox="0 0 12 12" fill="none">
+                    <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.5" strokeDasharray="6 20" className="text-cc-running" />
+                  </svg>
+                </>
+              ) : status === "compacting" ? (
+                <span className="w-1.5 h-1.5 rounded-full bg-cc-warning animate-[pulse-scale_1.5s_ease-in-out_infinite]" />
+              ) : (
+                <span className="w-1.5 h-1.5 rounded-full bg-cc-success animate-[breathe_3s_ease-in-out_infinite]" />
+              )}
+            </span>
             <span className="text-[11px] text-cc-muted hidden sm:inline">
-              {isConnected ? "Connected" : "Disconnected"}
+              {!isConnected ? "Disconnected" : status === "running" ? "Thinking" : status === "compacting" ? "Compacting" : "Ready"}
             </span>
           </div>
         )}
@@ -63,17 +74,6 @@ export function TopBar() {
       <div className="flex items-center gap-3 text-[12px] text-cc-muted">
         {currentSessionId && (
           <>
-            {status === "compacting" && (
-              <span className="text-cc-warning font-medium animate-pulse">Compacting...</span>
-            )}
-
-            {status === "running" && (
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-cc-running animate-[pulse-dot_1s_ease-in-out_infinite]" />
-                <span className="text-cc-running font-medium">Thinking</span>
-              </div>
-            )}
-
             <button
               onClick={() => setTaskPanelOpen(!taskPanelOpen)}
               className={`flex items-center justify-center w-7 h-7 rounded-lg transition-colors cursor-pointer ${

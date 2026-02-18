@@ -291,6 +291,8 @@ export function CronPanel({ onClose }: Props) {
   const [config, setConfig] = useState<CronJob["config"]>(getDefaultConfig("linear_agent"));
   const [saving, setSaving] = useState(false);
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   // View mode for selected job
   const [viewTab, setViewTab] = useState<"config" | "history">("config");
 
@@ -323,6 +325,7 @@ export function CronPanel({ onClose }: Props) {
     setCreating(true);
     setSelected(null);
     setViewTab("config");
+    setSaveError(null);
     resetForm();
   }
 
@@ -330,6 +333,7 @@ export function CronPanel({ onClose }: Props) {
     setSelected(job);
     setCreating(false);
     setViewTab("config");
+    setSaveError(null);
     setName(job.name);
     setType(job.type);
     setModel(job.model || "");
@@ -360,6 +364,7 @@ export function CronPanel({ onClose }: Props) {
   async function handleSave() {
     if (!name.trim()) return;
     setSaving(true);
+    setSaveError(null);
 
     try {
       if (selected) {
@@ -386,8 +391,8 @@ export function CronPanel({ onClose }: Props) {
         setCreating(false);
       }
       await loadJobs();
-    } catch {
-      // ignore
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to save job");
     }
     setSaving(false);
   }
@@ -591,6 +596,9 @@ export function CronPanel({ onClose }: Props) {
                   </div>
 
                   {/* Actions */}
+                  {saveError && (
+                    <p className="text-xs text-cc-error bg-cc-error/10 px-3 py-2 rounded-lg">{saveError}</p>
+                  )}
                   <div className="flex gap-2 pt-2 border-t border-cc-border">
                     <button
                       onClick={handleSave}

@@ -323,35 +323,40 @@ export function Sidebar() {
                           {idx + 1}
                         </span>
                       )}
-                      <span className="relative flex shrink-0">
+                      <span className="relative flex shrink-0 w-3.5 h-3.5 items-center justify-center">
                         {s.archived ? (
                           // Archived session: show archive icon
                           <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-cc-muted opacity-60">
                             <path d="M2 3a1 1 0 011-1h10a1 1 0 011 1v1a1 1 0 01-1 1H3a1 1 0 01-1-1V3z" />
                             <path fillRule="evenodd" d="M13 6H3v7a1 1 0 001 1h8a1 1 0 001-1V6zM6 8.5a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5z" clipRule="evenodd" />
                           </svg>
+                        ) : permCount > 0 ? (
+                          // Permission pending: pulsing warning dot with ripple
+                          <>
+                            <span className="w-2.5 h-2.5 rounded-full bg-cc-warning animate-[pulse-scale_1.2s_ease-in-out_infinite]" />
+                            <span className="absolute inset-0 m-auto w-2.5 h-2.5 rounded-full bg-cc-warning/40 animate-[ripple_1.5s_ease-out_infinite]" />
+                          </>
+                        ) : s.sdkState === "exited" || !s.isConnected ? (
+                          // Disconnected/exited: dim static dot
+                          <span className="w-2 h-2 rounded-full bg-cc-muted opacity-30" />
+                        ) : isRunning ? (
+                          // Running: spinning ring + solid center
+                          <>
+                            <span className="w-2 h-2 rounded-full bg-cc-running" />
+                            <svg className="absolute inset-0 w-3.5 h-3.5 animate-[spin-ring_1.2s_linear_infinite]" viewBox="0 0 14 14" fill="none">
+                              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5" strokeDasharray="8 24" className="text-cc-running" />
+                            </svg>
+                            <span className="absolute inset-0 m-auto w-2.5 h-2.5 rounded-full bg-cc-running/20 animate-[ripple_2s_ease-out_infinite]" />
+                          </>
+                        ) : isCompacting ? (
+                          // Compacting: pulsing warning with scale animation
+                          <>
+                            <span className="w-2.5 h-2.5 rounded-full bg-cc-warning animate-[pulse-scale_1.5s_ease-in-out_infinite]" />
+                            <span className="absolute inset-0 m-auto w-2.5 h-2.5 rounded-full bg-cc-warning/30 animate-[ripple_2s_ease-out_infinite]" />
+                          </>
                         ) : (
-                          <span
-                            className={`w-3 h-3 rounded-full ${
-                              permCount > 0
-                                ? "bg-cc-warning"
-                                : s.sdkState === "exited"
-                                ? "bg-cc-muted opacity-40"
-                                : s.isConnected
-                                ? isRunning
-                                  ? "bg-cc-running"
-                                  : isCompacting
-                                  ? "bg-cc-warning"
-                                  : "bg-cc-success"
-                                : "bg-cc-muted opacity-40"
-                            }`}
-                          />
-                        )}
-                        {!s.archived && permCount > 0 && (
-                          <span className="absolute inset-0 w-3 h-3 rounded-full bg-cc-warning/40 animate-[pulse-dot_1.5s_ease-in-out_infinite]" />
-                        )}
-                        {!s.archived && permCount === 0 && isRunning && s.isConnected && (
-                          <span className="absolute inset-0 w-3 h-3 rounded-full bg-cc-running/40 animate-[pulse-dot_1.5s_ease-in-out_infinite]" />
+                          // Idle/connected: gentle breathing green dot
+                          <span className="w-2.5 h-2.5 rounded-full bg-cc-success animate-[breathe_3s_ease-in-out_infinite]" />
                         )}
                       </span>
                       {isEditing ? (
@@ -380,13 +385,33 @@ export function Sidebar() {
                         </span>
                       )}
                     </div>
-                    {(dirName || s.provider || s.model || s.archived) && (
-                      <div className="mt-0.5 ml-5 flex items-center gap-1.5">
-                        {s.archived && (
+                    {(dirName || s.provider || s.model || s.archived || (!s.archived && s.isConnected)) && (
+                      <div className="mt-0.5 ml-5 flex items-center gap-1.5 flex-wrap">
+                        {s.archived ? (
                           <span className="text-[10px] font-medium px-1.5 py-0 rounded-full border border-cc-muted/30 text-cc-muted">
                             Archived
                           </span>
-                        )}
+                        ) : permCount > 0 ? (
+                          <span className="text-[10px] font-medium text-cc-warning animate-pulse">
+                            Waiting for input
+                          </span>
+                        ) : s.isConnected && isRunning ? (
+                          <span className="text-[10px] font-medium text-cc-running">
+                            Thinking...
+                          </span>
+                        ) : s.isConnected && isCompacting ? (
+                          <span className="text-[10px] font-medium text-cc-warning animate-pulse">
+                            Compacting...
+                          </span>
+                        ) : s.isConnected ? (
+                          <span className="text-[10px] font-medium text-cc-success/70">
+                            Ready
+                          </span>
+                        ) : s.sdkState === "exited" ? (
+                          <span className="text-[10px] font-medium text-cc-muted/50">
+                            Exited
+                          </span>
+                        ) : null}
                         {s.provider && (
                           <span className={`text-[10px] font-medium px-1.5 py-0 rounded-full border ${
                             s.provider === "claude"
