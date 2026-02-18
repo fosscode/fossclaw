@@ -14,7 +14,7 @@ import { FileSessionStore } from "./session-store.js";
 import { UserPreferencesStore } from "./user-preferences.js";
 import { OllamaClient } from "./ollama-client.js";
 import { generateSelfSignedCert } from "./cert-generator.js";
-import { isAuthEnabled, validateSession, getSessionFromRequest, setAuthCredentials } from "./auth.js";
+import { isAuthEnabled, validateSession, getSessionFromRequest, setAuthCredentials, restoreAuthSessions, flushAuthSessions } from "./auth.js";
 import { ensureCredentials, getCredentialsFilePath } from "./credential-generator.js";
 import { CronJobStore } from "./cron-store.js";
 import { CronScheduler } from "./cron-scheduler.js";
@@ -87,6 +87,10 @@ const cronScheduler = new CronScheduler(cronStore, launcher, wsBridge, store);
 // ─── Authentication setup — ensure credentials exist ────────────────────────
 const credentials = await ensureCredentials();
 setAuthCredentials(credentials.username, credentials.password);
+const restoredAuthSessions = await restoreAuthSessions();
+if (restoredAuthSessions > 0) {
+  console.log(`[auth] Restored ${restoredAuthSessions} login session(s) from disk`);
+}
 
 const app = new Hono();
 
@@ -322,6 +326,7 @@ async function shutdown() {
   await cronStore.flush();
   await store.flush();
   await prefsStore.flush();
+  await flushAuthSessions();
   server.stop();
   process.exit(0);
 }

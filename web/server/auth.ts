@@ -1,12 +1,78 @@
 import { createMiddleware } from "hono/factory";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { randomBytes } from "node:crypto";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { join } from "node:path";
+import { homedir } from "node:os";
 
-// In-memory session store (simple Map)
-const sessions = new Map<string, { username: string; createdAt: number }>();
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+interface AuthSession {
+  username: string;
+  createdAt: number;
+}
+
+// ─── Session store (persisted to disk) ──────────────────────────────────────
+
+const sessions = new Map<string, AuthSession>();
 
 // Session expiry: 30 days
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60;
+
+const AUTH_SESSIONS_DIR = join(homedir(), ".fossclaw");
+const AUTH_SESSIONS_FILE = join(AUTH_SESSIONS_DIR, "auth-sessions.json");
+
+let flushTimer: Timer | undefined;
+
+function scheduleFlush(): void {
+  if (flushTimer) clearTimeout(flushTimer);
+  flushTimer = setTimeout(() => flushAuthSessions(), 2000);
+}
+
+/**
+ * Persist auth sessions to disk so they survive server restarts.
+ */
+export async function flushAuthSessions(): Promise<void> {
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = undefined;
+  }
+  try {
+    await mkdir(AUTH_SESSIONS_DIR, { recursive: true });
+    const data: Record<string, AuthSession> = {};
+    for (const [id, session] of sessions) {
+      data[id] = session;
+    }
+    await writeFile(AUTH_SESSIONS_FILE, JSON.stringify(data), "utf-8");
+  } catch {
+    // Best-effort — don't crash the server if we can't write
+  }
+}
+
+/**
+ * Restore auth sessions from disk on startup.
+ */
+export async function restoreAuthSessions(): Promise<number> {
+  try {
+    const raw = await readFile(AUTH_SESSIONS_FILE, "utf-8");
+    const data = JSON.parse(raw) as Record<string, AuthSession>;
+    const now = Date.now();
+    let restored = 0;
+    for (const [id, session] of Object.entries(data)) {
+      // Skip expired sessions
+      const age = (now - session.createdAt) / 1000;
+      if (age > SESSION_MAX_AGE) continue;
+      sessions.set(id, session);
+      restored++;
+    }
+    return restored;
+  } catch {
+    // File doesn't exist yet or is corrupted — start fresh
+    return 0;
+  }
+}
+
+// ─── Session CRUD ───────────────────────────────────────────────────────────
 
 function generateSessionId(): string {
   return randomBytes(32).toString("hex");
@@ -18,6 +84,7 @@ export function createSession(username: string): string {
     username,
     createdAt: Date.now(),
   });
+  scheduleFlush();
   return sessionId;
 }
 
@@ -30,6 +97,7 @@ export function validateSession(sessionId: string | undefined): boolean {
   const age = (Date.now() - session.createdAt) / 1000;
   if (age > SESSION_MAX_AGE) {
     sessions.delete(sessionId);
+    scheduleFlush();
     return false;
   }
 
@@ -39,8 +107,11 @@ export function validateSession(sessionId: string | undefined): boolean {
 export function deleteSession(sessionId: string | undefined): void {
   if (sessionId) {
     sessions.delete(sessionId);
+    scheduleFlush();
   }
 }
+
+// ─── Credentials ────────────────────────────────────────────────────────────
 
 let authCredentials: { username: string; password: string } | null = null;
 
@@ -64,6 +135,8 @@ export function validateCredentials(username: string, password: string): boolean
   }
   return username === authCredentials.username && password === authCredentials.password;
 }
+
+// ─── Middleware ──────────────────────────────────────────────────────────────
 
 // Middleware to protect routes (now always enforced)
 export const requireAuth = createMiddleware(async (c, next) => {
