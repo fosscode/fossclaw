@@ -17,6 +17,7 @@ import type {
 } from "./session-types.js";
 import type { SessionStore } from "./session-store.js";
 import type { OllamaClient } from "./ollama-client.js";
+import type { UserPreferencesStore } from "./user-preferences.js";
 
 // ─── WebSocket data tags ──────────────────────────────────────────────────────
 
@@ -75,11 +76,16 @@ export class WsBridge {
   private externalHandlers = new Map<string, (msg: Record<string, unknown>) => void>();
   private store: SessionStore | null;
   private ollama: OllamaClient | null;
+  private prefsStore: UserPreferencesStore | null = null;
   public onActivity: ((sessionId: string) => void) | null = null;
 
   constructor(store?: SessionStore, ollama?: OllamaClient) {
     this.store = store ?? null;
     this.ollama = ollama ?? null;
+  }
+
+  setPrefsStore(prefsStore: UserPreferencesStore) {
+    this.prefsStore = prefsStore;
   }
 
   // ── Session management ──────────────────────────────────────────────────
@@ -439,6 +445,38 @@ export class WsBridge {
     this.broadcastToBrowsers(session, browserMsg);
     this.store?.saveState(session.id, session.state);
     this.store?.saveHistory(session.id, session.messageHistory);
+
+    // Fire webhook if configured
+    this.fireWebhook(session);
+  }
+
+  private fireWebhook(session: Session) {
+    if (!this.prefsStore) return;
+    this.prefsStore.load().then(async (prefs) => {
+      const url = prefs.webhookUrl?.trim();
+      if (!url) return;
+      const sessionId = session.id;
+      // Try to get the human-readable session name from the store
+      let sessionName = sessionId;
+      if (this.store) {
+        const persisted = await this.store.load(sessionId).catch(() => null);
+        if (persisted?.meta.sessionName) sessionName = persisted.meta.sessionName;
+      }
+      const payload = {
+        text: `FossClaw: '${sessionName}' is waiting for your input`,
+        event: "waiting_for_input",
+        sessionId,
+        sessionName,
+        timestamp: new Date().toISOString(),
+      };
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).catch((err) => {
+        console.error(`[ws-bridge] Webhook POST failed:`, err);
+      });
+    }).catch(() => {});
   }
 
   private handleStreamEvent(session: Session, msg: CLIStreamEventMessage) {

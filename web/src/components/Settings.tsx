@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useStore } from "../store";
 import { api } from "../api";
 
@@ -9,6 +9,10 @@ export function Settings({ onClose }: { onClose: () => void }) {
   const setCoderMode = useStore((s) => s.setCoderMode);
   const notificationsEnabled = useStore((s) => s.notificationsEnabled);
   const setNotificationsEnabled = useStore((s) => s.setNotificationsEnabled);
+  const webhookUrl = useStore((s) => s.webhookUrl);
+  const setWebhookUrl = useStore((s) => s.setWebhookUrl);
+  const [webhookInput, setWebhookInput] = useState(webhookUrl);
+  useEffect(() => { setWebhookInput(webhookUrl); }, [webhookUrl]);
 
   const [updateStatus, setUpdateStatus] = useState<{
     checking: boolean;
@@ -122,6 +126,22 @@ export function Settings({ onClose }: { onClose: () => void }) {
                     className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                   />
                 </label>
+                <div className="space-y-1">
+                  <label className="block text-gray-700 dark:text-gray-300 text-sm">
+                    Webhook URL
+                  </label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    POST request sent when a session is waiting for input. Compatible with Slack and Discord incoming webhooks.
+                  </p>
+                  <input
+                    type="url"
+                    value={webhookInput}
+                    onChange={(e) => setWebhookInput(e.target.value)}
+                    onBlur={() => setWebhookUrl(webhookInput)}
+                    placeholder="https://hooks.slack.com/... or https://discord.com/api/webhooks/..."
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
+                  />
+                </div>
               </div>
             </section>
 

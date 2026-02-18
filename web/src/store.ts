@@ -63,6 +63,7 @@ interface AppState {
   showKeyboardShortcuts: boolean;
   showSettings: boolean;
   notificationsEnabled: boolean;
+  webhookUrl: string;
   homeResetKey: number;
   homeProvider: "claude" | "opencode";
   coderMode: boolean;
@@ -80,6 +81,7 @@ interface AppState {
   setShowKeyboardShortcuts: (open: boolean) => void;
   setShowSettings: (open: boolean) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
+  setWebhookUrl: (url: string) => void;
   setCoderMode: (enabled: boolean) => void;
   toggleCoderMode: () => void;
   newSession: (provider?: "claude" | "opencode") => void;
@@ -215,6 +217,7 @@ export const useStore = create<AppState>((set) => ({
   showKeyboardShortcuts: false,
   showSettings: false,
   notificationsEnabled: false,
+  webhookUrl: "",
   homeResetKey: 0,
   homeProvider: "claude",
   coderMode: false,
@@ -268,6 +271,10 @@ export const useStore = create<AppState>((set) => ({
   setShowKeyboardShortcuts: (open) => set({ showKeyboardShortcuts: open }),
   setShowSettings: (open) => set({ showSettings: open }),
   setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
+  setWebhookUrl: (url) => {
+    set({ webhookUrl: url });
+    import("./api.js").then(({ api }) => api.updatePreferences({ webhookUrl: url }).catch(() => {}));
+  },
   setCoderMode: (enabled) => set({ coderMode: enabled }),
   toggleCoderMode: () => set((s) => ({ coderMode: !s.coderMode })),
   newSession: (provider?: "claude" | "opencode") => set((s) => ({ 
@@ -302,6 +309,9 @@ export const useStore = create<AppState>((set) => ({
       if (Array.isArray(prefs.recentDirs)) {
         updates.recentDirs = prefs.recentDirs;
         localStorage.setItem("cc-recent-dirs", JSON.stringify(prefs.recentDirs));
+      }
+      if (typeof prefs.webhookUrl === "string") {
+        updates.webhookUrl = prefs.webhookUrl;
       }
       if (prefs.defaultModels && typeof prefs.defaultModels === "object") {
         const validEntries = Object.entries(prefs.defaultModels).filter(

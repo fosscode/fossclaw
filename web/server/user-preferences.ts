@@ -16,6 +16,7 @@ export interface UserPreferences {
   sidebarWidth: number;
   playbooks: Playbook[];
   recentDirs: string[];
+  webhookUrl: string;
 }
 
 const DEFAULTS: UserPreferences = {
@@ -24,6 +25,7 @@ const DEFAULTS: UserPreferences = {
   sidebarWidth: 260,
   playbooks: [],
   recentDirs: [],
+  webhookUrl: "",
 };
 
 export class UserPreferencesStore {

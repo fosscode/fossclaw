@@ -63,6 +63,7 @@ if (ollamaUrl) {
 }
 
 const wsBridge = new WsBridge(store, ollamaClient);
+wsBridge.setPrefsStore(prefsStore);
 const launcher = new CliLauncher(port, defaultCwd, store, useHttps);
 
 // OpenCode bridge — uses a dedicated port for the opencode serve process
