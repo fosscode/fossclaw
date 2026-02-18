@@ -453,6 +453,7 @@ export class WsBridge {
   private fireWebhook(session: Session) {
     if (!this.prefsStore) return;
     this.prefsStore.load().then(async (prefs) => {
+      if (!prefs.notificationsEnabled) return;
       const url = prefs.webhookUrl?.trim();
       if (!url) return;
       const sessionId = session.id;
@@ -462,8 +463,10 @@ export class WsBridge {
         const persisted = await this.store.load(sessionId).catch(() => null);
         if (persisted?.meta.sessionName) sessionName = persisted.meta.sessionName;
       }
+      const message = `FossClaw: '${sessionName}' is waiting for your input`;
       const payload = {
-        text: `FossClaw: '${sessionName}' is waiting for your input`,
+        text: message,
+        content: message,
         event: "waiting_for_input",
         sessionId,
         sessionName,

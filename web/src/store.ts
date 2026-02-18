@@ -270,7 +270,10 @@ export const useStore = create<AppState>((set) => ({
   setShowPlaybookManager: (open) => set({ showPlaybookManager: open }),
   setShowKeyboardShortcuts: (open) => set({ showKeyboardShortcuts: open }),
   setShowSettings: (open) => set({ showSettings: open }),
-  setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
+  setNotificationsEnabled: (enabled) => {
+    set({ notificationsEnabled: enabled });
+    import("./api.js").then(({ api }) => api.updatePreferences({ notificationsEnabled: enabled }).catch(() => {}));
+  },
   setWebhookUrl: (url) => {
     set({ webhookUrl: url });
     import("./api.js").then(({ api }) => api.updatePreferences({ webhookUrl: url }).catch(() => {}));
@@ -312,6 +315,9 @@ export const useStore = create<AppState>((set) => ({
       }
       if (typeof prefs.webhookUrl === "string") {
         updates.webhookUrl = prefs.webhookUrl;
+      }
+      if (typeof prefs.notificationsEnabled === "boolean") {
+        updates.notificationsEnabled = prefs.notificationsEnabled;
       }
       if (prefs.defaultModels && typeof prefs.defaultModels === "object") {
         const validEntries = Object.entries(prefs.defaultModels).filter(

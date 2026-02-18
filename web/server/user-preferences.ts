@@ -17,6 +17,7 @@ export interface UserPreferences {
   playbooks: Playbook[];
   recentDirs: string[];
   webhookUrl: string;
+  notificationsEnabled: boolean;
 }
 
 const DEFAULTS: UserPreferences = {
@@ -26,6 +27,7 @@ const DEFAULTS: UserPreferences = {
   playbooks: [],
   recentDirs: [],
   webhookUrl: "",
+  notificationsEnabled: false,
 };
 
 export class UserPreferencesStore {
