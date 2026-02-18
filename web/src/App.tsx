@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useStore } from "./store.js";
 import { Sidebar } from "./components/Sidebar.js";
 import { ChatView } from "./components/ChatView.js";
@@ -13,6 +13,7 @@ import { KeyboardShortcuts } from "./components/KeyboardShortcuts.js";
 import { Settings } from "./components/Settings.js";
 import { Login } from "./components/Login.js";
 import { api } from "./api.js";
+import { connectSession, disconnectSession } from "./ws.js";
 import type { Playbook } from "./types.js";
 import { renderTemplate, buildDefaultContext } from "./utils/playbook.js";
 
@@ -42,6 +43,9 @@ export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
   const [authRequired, setAuthRequired] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const sdkSessions = useStore((s) => s.sdkSessions);
+  const deepLinkHandled = useRef(false);
 
   // Check auth status on mount
   useEffect(() => {
@@ -86,6 +90,26 @@ export default function App() {
       });
     }
   }, [isAuthenticated]);
+
+  // Navigate to session specified in ?session= query param (used by webhook links)
+  useEffect(() => {
+    if (!isAuthenticated || deepLinkHandled.current) return;
+    const targetId = new URLSearchParams(window.location.search).get("session");
+    if (!targetId) return;
+    const match = sdkSessions.find((s) => s.sessionId === targetId);
+    if (!match) return;
+    deepLinkHandled.current = true;
+    const store = useStore.getState();
+    if (store.currentSessionId && store.currentSessionId !== targetId) {
+      disconnectSession(store.currentSessionId);
+    }
+    store.setCurrentSession(targetId);
+    connectSession(targetId);
+    // Clean up the query param without reloading
+    const url = new URL(window.location.href);
+    url.searchParams.delete("session");
+    window.history.replaceState(null, "", url.toString());
+  }, [isAuthenticated, sdkSessions]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
