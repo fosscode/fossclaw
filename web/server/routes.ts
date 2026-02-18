@@ -253,8 +253,12 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
     if (!url) {
       return c.json({ error: "No webhook URL configured" }, 400);
     }
-    const message = "FossClaw: Test notification";
-    const payload = {
+    const appUrl = prefs.appUrl?.trim();
+    const sessionUrl = appUrl ? `${appUrl.replace(/\/$/, "")}/?session=test` : undefined;
+    const message = sessionUrl
+      ? `FossClaw: Test notification\n${sessionUrl}`
+      : "FossClaw: Test notification";
+    const payload: Record<string, unknown> = {
       text: message,
       content: message,
       event: "test",
@@ -262,6 +266,7 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
       sessionName: "Test",
       timestamp: new Date().toISOString(),
     };
+    if (sessionUrl) payload.sessionUrl = sessionUrl;
     try {
       const res = await fetch(url, {
         method: "POST",

@@ -18,6 +18,7 @@ export interface UserPreferences {
   recentDirs: string[];
   webhookUrl: string;
   notificationsEnabled: boolean;
+  appUrl: string;
 }
 
 const DEFAULTS: UserPreferences = {
@@ -28,6 +29,7 @@ const DEFAULTS: UserPreferences = {
   recentDirs: [],
   webhookUrl: "",
   notificationsEnabled: false,
+  appUrl: "",
 };
 
 export class UserPreferencesStore {

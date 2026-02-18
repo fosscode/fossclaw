@@ -13,6 +13,10 @@ export function Settings({ onClose }: { onClose: () => void }) {
   const setWebhookUrl = useStore((s) => s.setWebhookUrl);
   const [webhookInput, setWebhookInput] = useState(webhookUrl);
   useEffect(() => { setWebhookInput(webhookUrl); }, [webhookUrl]);
+  const appUrl = useStore((s) => s.appUrl);
+  const setAppUrl = useStore((s) => s.setAppUrl);
+  const [appUrlInput, setAppUrlInput] = useState(appUrl);
+  useEffect(() => { setAppUrlInput(appUrl); }, [appUrl]);
   const [testStatus, setTestStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
   const [testError, setTestError] = useState<string>("");
 
@@ -128,6 +132,22 @@ export function Settings({ onClose }: { onClose: () => void }) {
                     className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                   />
                 </label>
+                <div className="space-y-1">
+                  <label className="block text-gray-700 dark:text-gray-300 text-sm">
+                    App URL
+                  </label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Base URL of this FossClaw instance. When set, webhook notifications include a link to the session.
+                  </p>
+                  <input
+                    type="url"
+                    value={appUrlInput}
+                    onChange={(e) => setAppUrlInput(e.target.value)}
+                    onBlur={() => setAppUrl(appUrlInput)}
+                    placeholder="https://fossclaw.example.com"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
+                  />
+                </div>
                 <div className="space-y-1">
                   <label className="block text-gray-700 dark:text-gray-300 text-sm">
                     Webhook URL

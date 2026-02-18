@@ -463,8 +463,12 @@ export class WsBridge {
         const persisted = await this.store.load(sessionId).catch(() => null);
         if (persisted?.meta.sessionName) sessionName = persisted.meta.sessionName;
       }
-      const message = `FossClaw: '${sessionName}' is waiting for your input`;
-      const payload = {
+      const appUrl = prefs.appUrl?.trim();
+      const sessionUrl = appUrl ? `${appUrl.replace(/\/$/, "")}/?session=${sessionId}` : undefined;
+      const message = sessionUrl
+        ? `FossClaw: '${sessionName}' is waiting for your input\n${sessionUrl}`
+        : `FossClaw: '${sessionName}' is waiting for your input`;
+      const payload: Record<string, unknown> = {
         text: message,
         content: message,
         event: "waiting_for_input",
@@ -472,6 +476,7 @@ export class WsBridge {
         sessionName,
         timestamp: new Date().toISOString(),
       };
+      if (sessionUrl) payload.sessionUrl = sessionUrl;
       fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -64,6 +64,7 @@ interface AppState {
   showSettings: boolean;
   notificationsEnabled: boolean;
   webhookUrl: string;
+  appUrl: string;
   homeResetKey: number;
   homeProvider: "claude" | "opencode";
   coderMode: boolean;
@@ -82,6 +83,7 @@ interface AppState {
   setShowSettings: (open: boolean) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
   setWebhookUrl: (url: string) => void;
+  setAppUrl: (url: string) => void;
   setCoderMode: (enabled: boolean) => void;
   toggleCoderMode: () => void;
   newSession: (provider?: "claude" | "opencode") => void;
@@ -218,6 +220,7 @@ export const useStore = create<AppState>((set) => ({
   showSettings: false,
   notificationsEnabled: false,
   webhookUrl: "",
+  appUrl: "",
   homeResetKey: 0,
   homeProvider: "claude",
   coderMode: false,
@@ -278,6 +281,10 @@ export const useStore = create<AppState>((set) => ({
     set({ webhookUrl: url });
     import("./api.js").then(({ api }) => api.updatePreferences({ webhookUrl: url }).catch(() => {}));
   },
+  setAppUrl: (url) => {
+    set({ appUrl: url });
+    import("./api.js").then(({ api }) => api.updatePreferences({ appUrl: url }).catch(() => {}));
+  },
   setCoderMode: (enabled) => set({ coderMode: enabled }),
   toggleCoderMode: () => set((s) => ({ coderMode: !s.coderMode })),
   newSession: (provider?: "claude" | "opencode") => set((s) => ({ 
@@ -318,6 +325,9 @@ export const useStore = create<AppState>((set) => ({
       }
       if (typeof prefs.notificationsEnabled === "boolean") {
         updates.notificationsEnabled = prefs.notificationsEnabled;
+      }
+      if (typeof prefs.appUrl === "string") {
+        updates.appUrl = prefs.appUrl;
       }
       if (prefs.defaultModels && typeof prefs.defaultModels === "object") {
         const validEntries = Object.entries(prefs.defaultModels).filter(
