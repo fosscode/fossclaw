@@ -362,7 +362,10 @@ export function CronPanel({ onClose }: Props) {
   }
 
   async function handleSave() {
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setSaveError("Job name is required");
+      return;
+    }
     setSaving(true);
     setSaveError(null);
 
@@ -529,7 +532,7 @@ export function CronPanel({ onClose }: Props) {
                   {/* Name */}
                   <label className="block">
                     <span className="text-xs font-medium text-cc-fg">Name</span>
-                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2 mt-1 text-sm rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg focus:outline-none focus:border-cc-primary/50" placeholder="My Cron Job" />
+                    <input type="text" value={name} onChange={(e) => { setName(e.target.value); if (saveError === "Job name is required") setSaveError(null); }} className="w-full px-3 py-2 mt-1 text-sm rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg focus:outline-none focus:border-cc-primary/50" placeholder="My Cron Job" />
                   </label>
 
                   {/* Type */}
@@ -602,7 +605,7 @@ export function CronPanel({ onClose }: Props) {
                   <div className="flex gap-2 pt-2 border-t border-cc-border">
                     <button
                       onClick={handleSave}
-                      disabled={!name.trim() || saving}
+                      disabled={saving}
                       className="px-4 py-2 text-xs font-medium rounded-lg bg-cc-primary text-white hover:bg-cc-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
                       {saving ? "Saving..." : selected ? "Save Changes" : "Create Job"}

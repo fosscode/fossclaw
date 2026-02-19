@@ -124,6 +124,8 @@ function handleMessage(sessionId: string, generation: number, event: MessageEven
     case "session_init": {
       store.addSession(data.session);
       store.setCliConnected(sessionId, true);
+      // Default to "idle" — the server will immediately follow with a status_change
+      // replay if the session is currently running or compacting, which will override this.
       store.setSessionStatus(sessionId, "idle");
       if (!store.sessionNames.has(sessionId)) {
         const existingNames = new Set(store.sessionNames.values());

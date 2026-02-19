@@ -136,6 +136,15 @@ export function makeSystemStatus(overrides: Record<string, unknown> = {}) {
   };
 }
 
+export function makeKeepAlive(overrides: Record<string, unknown> = {}) {
+  return {
+    type: "keep_alive",
+    uuid: randomUUID(),
+    session_id: overrides.session_id ?? "",
+    ...overrides,
+  };
+}
+
 export function makeResultMessageWithUsage(overrides: Record<string, unknown> = {}) {
   return {
     type: "result",

@@ -5,7 +5,7 @@ import { MockBrowserClient } from "./helpers/mock-browser-client.js";
 import {
   makeSystemInit, makeAssistantMessage, makeResultMessage, makeControlRequest,
   makeStreamEvent, makeToolProgress, makeToolUseSummary, makeAuthStatus,
-  makeSystemStatus, makeResultMessageWithUsage,
+  makeSystemStatus, makeResultMessageWithUsage, makeKeepAlive,
 } from "./helpers/fixtures.js";
 import { delay } from "./helpers/wait.js";
 
@@ -797,6 +797,171 @@ describe("WebSocket Bridge", () => {
       expect(gone).toBeUndefined();
 
       // Browser socket was closed by closeSession
+    });
+  });
+
+  // ─── Status Replay on Reconnect ────────────────────────────────
+  //
+  // These tests verify the stoplight fix: when a browser reconnects mid-session
+  // (e.g. after a brief network blip), the server must replay the current running
+  // status so the indicator doesn't flicker to idle/grey.
+
+  describe("status replay on browser reconnect", () => {
+    test("reconnecting browser receives status_change:running when session is running", async () => {
+      const sessionId = await createSession(ctx);
+      const cli = new MockCLIClient(ctx.wsBaseUrl, sessionId);
+      await cli.connect();
+
+      const browser1 = new MockBrowserClient(ctx.wsBaseUrl, sessionId);
+      await browser1.connect();
+      await browser1.waitForMessage("session_init");
+
+      // CLI sends an assistant message — session is now "running"
+      cli.send(makeAssistantMessage("Thinking..."));
+      await browser1.waitForMessage("assistant");
+      browser1.close();
+      await delay(50);
+
+      // A new browser connects while session is still in running state
+      const browser2 = new MockBrowserClient(ctx.wsBaseUrl, sessionId);
+      await browser2.connect();
+      await browser2.waitForMessage("session_init");
+
+      // Should immediately receive a status_change:running replay
+      const statusMsg = await browser2.waitForMessage("status_change");
+      expect(statusMsg.status).toBe("running");
+
+      browser2.close();
+      cli.close();
+    });
+
+    test("reconnecting browser receives status_change:compacting when compacting", async () => {
+      const sessionId = await createSession(ctx);
+      const cli = new MockCLIClient(ctx.wsBaseUrl, sessionId);
+      await cli.connect();
+
+      const browser1 = new MockBrowserClient(ctx.wsBaseUrl, sessionId);
+      await browser1.connect();
+      await browser1.waitForMessage("session_init");
+
+      // CLI signals compacting
+      cli.send(makeSystemStatus({ status: "compacting" }));
+      await browser1.waitForMessage("status_change");
+      browser1.close();
+      await delay(50);
+
+      // Reconnecting browser should get the compacting status replayed
+      const browser2 = new MockBrowserClient(ctx.wsBaseUrl, sessionId);
+      await browser2.connect();
+      await browser2.waitForMessage("session_init");
+
+      const statusMsg = await browser2.waitForMessage("status_change");
+      expect(statusMsg.status).toBe("compacting");
+
+      browser2.close();
+      cli.close();
+    });
+
+    test("reconnecting browser does NOT get status_change replay when session is idle", async () => {
+      const sessionId = await createSession(ctx);
+      const cli = new MockCLIClient(ctx.wsBaseUrl, sessionId);
+      await cli.connect();
+
+      const browser1 = new MockBrowserClient(ctx.wsBaseUrl, sessionId);
+      await browser1.connect();
+      await browser1.waitForMessage("session_init");
+
+      // Run a full cycle: assistant → result (ends idle)
+      cli.send(makeAssistantMessage("Done"));
+      await browser1.waitForMessage("assistant");
+      cli.send(makeResultMessage({ total_cost_usd: 0.01 }));
+      await browser1.waitForMessage("result");
+      browser1.close();
+      await delay(50);
+
+      // Reconnecting browser — session is idle, no status_change should follow session_init
+      const browser2 = new MockBrowserClient(ctx.wsBaseUrl, sessionId);
+      await browser2.connect();
+      await browser2.waitForMessage("session_init");
+      await browser2.waitForMessage("message_history");
+
+      // Confirm no status_change arrives (use a small timeout)
+      const nothing = await browser2.waitForMessage("status_change", 150).catch(() => null);
+      expect(nothing).toBeNull();
+
+      browser2.close();
+      cli.close();
+    });
+
+    test("reconnecting browser during permission prompt gets pending perms AND running status", async () => {
+      const sessionId = await createSession(ctx);
+      const cli = new MockCLIClient(ctx.wsBaseUrl, sessionId);
+      await cli.connect();
+
+      const browser1 = new MockBrowserClient(ctx.wsBaseUrl, sessionId);
+      await browser1.connect();
+      await browser1.waitForMessage("session_init");
+
+      // Simulate: assistant message → then permission request (running + waiting)
+      cli.send(makeAssistantMessage("About to use a tool"));
+      await browser1.waitForMessage("assistant");
+
+      const permReq = makeControlRequest("Bash", { command: "ls" });
+      cli.send(permReq);
+      await browser1.waitForMessage("permission_request");
+      browser1.close();
+      await delay(50);
+
+      // Reconnect — should get status replay (running) AND permission replay
+      const browser2 = new MockBrowserClient(ctx.wsBaseUrl, sessionId);
+      await browser2.connect();
+      await browser2.waitForMessage("session_init");
+      await browser2.waitForMessage("message_history");
+
+      // Permission replay
+      const permReplay = await browser2.waitForMessage("permission_request");
+      expect((permReplay.request as Record<string, unknown>).request_id).toBe(permReq.request_id);
+
+      // Status replay
+      const statusReplay = await browser2.waitForMessage("status_change");
+      expect(statusReplay.status).toBe("running");
+
+      browser2.close();
+      cli.close();
+    });
+
+    test("status resets to null after CLI disconnects mid-run", async () => {
+      const sessionId = await createSession(ctx);
+      const cli = new MockCLIClient(ctx.wsBaseUrl, sessionId);
+      await cli.connect();
+
+      const browser = new MockBrowserClient(ctx.wsBaseUrl, sessionId);
+      await browser.connect();
+      await browser.waitForMessage("session_init");
+
+      // Session starts running
+      cli.send(makeAssistantMessage("Working..."));
+      await browser.waitForMessage("assistant");
+
+      // CLI drops (e.g. crash mid-run)
+      cli.close();
+      await browser.waitForMessage("cli_disconnected");
+      browser.close();
+      await delay(50);
+
+      // A new browser connects — CLI is gone, should NOT get a running status replay
+      const browser2 = new MockBrowserClient(ctx.wsBaseUrl, sessionId);
+      await browser2.connect();
+      await browser2.waitForMessage("session_init");
+
+      // Should receive cli_disconnected (not a status_change)
+      const disc = await browser2.waitForMessage("cli_disconnected");
+      expect(disc.type).toBe("cli_disconnected");
+
+      const noStatus = await browser2.waitForMessage("status_change", 150).catch(() => null);
+      expect(noStatus).toBeNull();
+
+      browser2.close();
     });
   });
 });

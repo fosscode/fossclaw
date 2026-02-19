@@ -49,6 +49,8 @@ interface Session {
   firstMessageReceived: boolean;
   /** Archived sessions are read-only (CLI is dead) */
   archived?: boolean;
+  /** Last known CLI running status — replayed to browsers that reconnect mid-session */
+  currentStatus: "running" | "idle" | "compacting" | null;
 }
 
 function makeDefaultState(sessionId: string): SessionState {
@@ -107,6 +109,7 @@ export class WsBridge {
         messageHistory: [],
         pendingMessages: [],
         firstMessageReceived: false,
+        currentStatus: null,
       };
       this.sessions.set(sessionId, session);
     }
@@ -145,6 +148,7 @@ export class WsBridge {
       pendingMessages: [],
       firstMessageReceived: history.some((msg) => msg.type === "user_message"),
       archived,
+      currentStatus: null,
     };
     this.sessions.set(sessionId, session);
   }
@@ -289,6 +293,10 @@ export class WsBridge {
     // Notify if CLI is not connected (but not for external-handler sessions like OpenCode)
     if (!session.cliSocket && !this.externalHandlers.has(sessionId)) {
       this.sendToBrowser(ws, { type: "cli_disconnected" });
+    } else if (session.currentStatus === "running" || session.currentStatus === "compacting") {
+      // Replay running/compacting status so reconnecting browsers see the right stoplight.
+      // We don't replay "idle" since session_init already implies idle when CLI is up.
+      this.sendToBrowser(ws, { type: "status_change", status: session.currentStatus });
     }
   }
 
@@ -398,6 +406,7 @@ export class WsBridge {
     } else if (subtype === "status") {
       const status = (msg as { status?: "compacting" | null }).status;
       session.state.is_compacting = status === "compacting";
+      session.currentStatus = (status as "compacting" | null) ?? null;
 
       const permMode = (msg as { permissionMode?: string }).permissionMode;
       if (permMode) {
@@ -413,6 +422,7 @@ export class WsBridge {
   }
 
   private handleAssistantMessage(session: Session, msg: CLIAssistantMessage) {
+    session.currentStatus = "running";
     const browserMsg: BrowserIncomingMessage = {
       type: "assistant",
       message: msg.message,
@@ -425,6 +435,7 @@ export class WsBridge {
   }
 
   private handleResultMessage(session: Session, msg: CLIResultMessage) {
+    session.currentStatus = null;
     // Update session cost/turns
     session.state.total_cost_usd = msg.total_cost_usd;
     session.state.num_turns = msg.num_turns;
