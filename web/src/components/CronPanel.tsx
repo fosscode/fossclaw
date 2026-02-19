@@ -217,6 +217,86 @@ function LinearAgentConfigForm({ config, onChange }: { config: LinearAgentConfig
 
 // ── Run History ─────────────────────────────────────────────────────────
 
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+      className="ml-1.5 text-[10px] text-cc-primary hover:underline cursor-pointer flex-shrink-0"
+    >
+      {copied ? "copied!" : "copy"}
+    </button>
+  );
+}
+
+function RunHistoryItem({ run }: { run: CronRun }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const statusColors: Record<string, string> = {
+    completed: "text-green-600 dark:text-green-400",
+    failed: "text-red-600 dark:text-red-400",
+    running: "text-blue-600 dark:text-blue-400",
+    skipped: "text-yellow-600 dark:text-yellow-400",
+  };
+
+  const hasDetails = !!(run.triggerSummary || run.error);
+
+  return (
+    <div className="px-3 py-2 rounded-lg bg-cc-input-bg border border-cc-border">
+      <div className="flex items-center justify-between">
+        <span className={`text-xs font-medium ${statusColors[run.status] || "text-cc-muted"}`}>
+          {run.status}
+        </span>
+        <span className="text-[10px] text-cc-muted">{formatTimeAgo(run.startedAt)}</span>
+      </div>
+      {run.triggerCount > 0 && (
+        <p className="text-[11px] text-cc-fg mt-0.5">{run.triggerCount} trigger(s)</p>
+      )}
+      {hasDetails && (
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="text-[10px] text-cc-primary hover:underline mt-0.5 cursor-pointer"
+        >
+          {expanded ? "hide details" : "show details"}
+        </button>
+      )}
+      {expanded && (
+        <div className="mt-1.5 space-y-1.5">
+          {run.triggerSummary && (
+            <div>
+              <div className="flex items-center mb-0.5">
+                <span className="text-[10px] font-medium text-cc-muted uppercase tracking-wide">Trigger</span>
+                <CopyButton text={run.triggerSummary} />
+              </div>
+              <pre className="text-[10px] text-cc-fg bg-cc-bg border border-cc-border rounded p-2 whitespace-pre-wrap break-words font-mono-code">{run.triggerSummary}</pre>
+            </div>
+          )}
+          {run.error && (
+            <div>
+              <div className="flex items-center mb-0.5">
+                <span className="text-[10px] font-medium text-red-500 uppercase tracking-wide">Error</span>
+                <CopyButton text={run.error} />
+              </div>
+              <pre className="text-[10px] text-red-400 bg-cc-bg border border-red-500/30 rounded p-2 whitespace-pre-wrap break-words font-mono-code">{run.error}</pre>
+            </div>
+          )}
+        </div>
+      )}
+      {run.sessionId && (
+        <button
+          onClick={() => {
+            useStore.getState().setCurrentSession(run.sessionId);
+            useStore.getState().setShowCronPanel(false);
+          }}
+          className="text-[10px] text-cc-primary hover:underline mt-0.5 cursor-pointer block"
+        >
+          View session
+        </button>
+      )}
+    </div>
+  );
+}
+
 function RunHistory({ jobId }: { jobId: string }) {
   const [runs, setRuns] = useState<CronRun[]>([]);
   const [loading, setLoading] = useState(true);
@@ -229,44 +309,10 @@ function RunHistory({ jobId }: { jobId: string }) {
   if (loading) return <p className="text-xs text-cc-muted py-2">Loading runs...</p>;
   if (runs.length === 0) return <p className="text-xs text-cc-muted py-2">No runs yet</p>;
 
-  const statusColors: Record<string, string> = {
-    completed: "text-green-600 dark:text-green-400",
-    failed: "text-red-600 dark:text-red-400",
-    running: "text-blue-600 dark:text-blue-400",
-    skipped: "text-yellow-600 dark:text-yellow-400",
-  };
-
   return (
     <div className="space-y-1.5">
       {runs.map((run) => (
-        <div key={run.id} className="px-3 py-2 rounded-lg bg-cc-input-bg border border-cc-border">
-          <div className="flex items-center justify-between">
-            <span className={`text-xs font-medium ${statusColors[run.status] || "text-cc-muted"}`}>
-              {run.status}
-            </span>
-            <span className="text-[10px] text-cc-muted">{formatTimeAgo(run.startedAt)}</span>
-          </div>
-          {run.triggerCount > 0 && (
-            <p className="text-[11px] text-cc-fg mt-0.5">{run.triggerCount} trigger(s)</p>
-          )}
-          {run.triggerSummary && (
-            <p className="text-[10px] text-cc-muted mt-0.5 truncate">{run.triggerSummary}</p>
-          )}
-          {run.error && (
-            <p className="text-[10px] text-red-500 mt-0.5 truncate">{run.error}</p>
-          )}
-          {run.sessionId && (
-            <button
-              onClick={() => {
-                useStore.getState().setCurrentSession(run.sessionId);
-                useStore.getState().setShowCronPanel(false);
-              }}
-              className="text-[10px] text-cc-primary hover:underline mt-0.5 cursor-pointer"
-            >
-              View session
-            </button>
-          )}
-        </div>
+        <RunHistoryItem key={run.id} run={run} />
       ))}
     </div>
   );
