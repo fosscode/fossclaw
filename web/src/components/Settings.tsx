@@ -29,6 +29,10 @@ export function Settings({ onClose }: { onClose: () => void }) {
   const [testError, setTestError] = useState<string>("");
   const [ollamaTestStatus, setOllamaTestStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
   const [ollamaTestError, setOllamaTestError] = useState<string>("");
+  const linearApiKey = useStore((s) => s.linearApiKey);
+  const setLinearApiKey = useStore((s) => s.setLinearApiKey);
+  const [linearApiKeyInput, setLinearApiKeyInput] = useState(linearApiKey);
+  useEffect(() => { setLinearApiKeyInput(linearApiKey); }, [linearApiKey]);
 
   const [updateStatus, setUpdateStatus] = useState<{
     checking: boolean;
@@ -265,6 +269,29 @@ export function Settings({ onClose }: { onClose: () => void }) {
                   {ollamaTestStatus === "error" && (
                     <span className="text-sm text-red-600 dark:text-red-400">{ollamaTestError}</span>
                   )}
+                </div>
+              </div>
+            </section>
+
+            {/* Integrations */}
+            <section>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Integrations</h3>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="block text-gray-700 dark:text-gray-300 text-sm">
+                    Linear API Key
+                  </label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Used for Linear cron jobs and the issue picker. Overrides the <code className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">LINEAR_API_KEY</code> environment variable.
+                  </p>
+                  <input
+                    type="password"
+                    value={linearApiKeyInput}
+                    onChange={(e) => setLinearApiKeyInput(e.target.value)}
+                    onBlur={() => setLinearApiKey(linearApiKeyInput)}
+                    placeholder="lin_api_..."
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
+                  />
                 </div>
               </div>
             </section>

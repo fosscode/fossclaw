@@ -102,6 +102,7 @@ interface AppState {
   setAppUrl: (url: string) => void;
   setOllamaUrl: (url: string) => void;
   setOllamaModel: (model: string) => void;
+  setLinearApiKey: (key: string) => void;
   setCoderMode: (enabled: boolean) => void;
   toggleCoderMode: () => void;
   newSession: (provider?: "claude" | "opencode") => void;
@@ -342,6 +343,10 @@ export const useStore = create<AppState>((set) => ({
     set({ ollamaModel: model });
     import("./api.js").then(({ api }) => api.updatePreferences({ ollamaModel: model }).catch(() => {}));
   },
+  setLinearApiKey: (key) => {
+    set({ linearApiKey: key });
+    import("./api.js").then(({ api }) => api.updatePreferences({ linearApiKey: key }).catch(() => {}));
+  },
   setCoderMode: (enabled) => set({ coderMode: enabled }),
   toggleCoderMode: () => set((s) => ({ coderMode: !s.coderMode })),
   newSession: (provider?: "claude" | "opencode") => set((s) => ({ 
@@ -391,6 +396,9 @@ export const useStore = create<AppState>((set) => ({
       }
       if (typeof prefs.ollamaModel === "string") {
         updates.ollamaModel = prefs.ollamaModel;
+      }
+      if (typeof prefs.linearApiKey === "string") {
+        updates.linearApiKey = prefs.linearApiKey;
       }
       if (prefs.defaultModels && typeof prefs.defaultModels === "object") {
         const validEntries = Object.entries(prefs.defaultModels).filter(
