@@ -113,8 +113,8 @@ const app = new Hono();
 app.use("/api/*", cors());
 app.route("/api", createRoutes(launcher, wsBridge, defaultCwd, opencodeBridge, store, prefsStore, cronStore, cronScheduler));
 
-// In production, serve built frontend using absolute path (works when installed as npm package)
-if (process.env.NODE_ENV === "production") {
+// Serve built frontend unless explicitly in dev mode (Vite handles it there)
+if (process.env.NODE_ENV !== "development") {
   const distDir = resolve(packageRoot, "dist");
   app.use("/*", serveStatic({ root: distDir }));
   app.get("/*", serveStatic({ path: resolve(distDir, "index.html") }));
@@ -279,7 +279,7 @@ console.log(`  GitHub Token:      ${process.env.GITHUB_TOKEN || savedPrefs.githu
 console.log(`  Cron Jobs:         ${enabledCronJobs} of ${cronJobs.length} enabled`);
 
 // In dev mode, log that Vite should be run separately
-if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV === "development") {
   console.log("Dev mode: run 'bun run dev:vite' in another terminal for the frontend");
 }
 
