@@ -394,7 +394,12 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
       el.scrollHeight - el.scrollTop - el.clientHeight < 120;
   }
 
-  // Instant scroll on mount (session switch), smooth during updates
+  // Reset mounted flag on session switch so next scroll is instant
+  useEffect(() => {
+    mounted.current = false;
+  }, [sessionId]);
+
+  // Instant scroll on mount/session switch, smooth during updates
   useEffect(() => {
     if (!isNearBottom.current) return;
     if (!mounted.current) {
