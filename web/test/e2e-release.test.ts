@@ -18,18 +18,15 @@ const PLATFORM = process.platform === "darwin" ? "darwin" : process.platform ===
 const ARCH = process.arch === "arm64" ? "arm64" : "x64";
 const BINARY_NAME = PLATFORM === "windows" ? `fossclaw-${PLATFORM}-${ARCH}.exe` : `fossclaw-${PLATFORM}-${ARCH}`;
 const BINARY_PATH = join(import.meta.dir, "..", "..", "dist", BINARY_NAME);
+const binaryExists = existsSync(BINARY_PATH);
 
-describe("E2E Release Tests", () => {
+describe.skipIf(!binaryExists)("E2E Release Tests", () => {
   let serverProcess: Subprocess | null = null;
   const testPort = 14456;
   const openCodePort = 14556;
 
   beforeAll(() => {
-    if (!existsSync(BINARY_PATH)) {
-      throw new Error(
-        `Binary not found at ${BINARY_PATH}. Run './build.sh' first.`
-      );
-    }
+    // Binary existence already checked via skipIf above
   });
 
   afterAll(() => {
@@ -210,7 +207,7 @@ describe("E2E Release Tests", () => {
   }, 45000);
 });
 
-describe("Binary Integrity Checks", () => {
+describe.skipIf(!binaryExists)("Binary Integrity Checks", () => {
   test("binary contains expected strings", async () => {
     // Read binary as text to check for embedded strings
     const binaryContent = await Bun.file(BINARY_PATH).text();

@@ -21,6 +21,7 @@ export interface UserPreferences {
   appUrl: string;
   ollamaUrl: string;
   ollamaModel: string;
+  linearApiKey: string;
 }
 
 const DEFAULTS: UserPreferences = {
@@ -34,6 +35,7 @@ const DEFAULTS: UserPreferences = {
   appUrl: "",
   ollamaUrl: "",
   ollamaModel: "",
+  linearApiKey: "",
 };
 
 export class UserPreferencesStore {

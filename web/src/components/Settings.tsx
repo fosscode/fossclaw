@@ -41,6 +41,8 @@ export function Settings({ onClose }: { onClose: () => void }) {
     updateAvailable: false,
   });
   const [installing, setInstalling] = useState(false);
+  const [confirmInstall, setConfirmInstall] = useState(false);
+  const addToast = useStore((s) => s.addToast);
 
   const checkForUpdates = async () => {
     setUpdateStatus({ checking: true, updateAvailable: false });
@@ -62,18 +64,14 @@ export function Settings({ onClose }: { onClose: () => void }) {
   };
 
   const installUpdate = async () => {
-    if (!confirm("Install update? The server will restart.")) {
-      return;
-    }
-
     setInstalling(true);
+    setConfirmInstall(false);
     try {
       await api.installUpdate();
-      // Server will restart, show message
-      alert("Update started! The server will restart automatically.");
+      addToast("Update started! The server will restart automatically.", "success");
     } catch (error) {
       setInstalling(false);
-      alert(`Update failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      addToast(`Update failed: ${error instanceof Error ? error.message : "Unknown error"}`, "error");
     }
   };
 
@@ -304,13 +302,31 @@ export function Settings({ onClose }: { onClose: () => void }) {
                     <p className="text-blue-800 dark:text-blue-200 font-medium">
                       Update available: v{updateStatus.latestVersion}
                     </p>
-                    <button
-                      onClick={installUpdate}
-                      disabled={installing}
-                      className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {installing ? "Installing..." : "Install Update"}
-                    </button>
+                    {confirmInstall ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-blue-800 dark:text-blue-200">The server will restart. Confirm?</span>
+                        <button
+                          onClick={installUpdate}
+                          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                        >
+                          Install
+                        </button>
+                        <button
+                          onClick={() => setConfirmInstall(false)}
+                          className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmInstall(true)}
+                        disabled={installing}
+                        className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {installing ? "Installing..." : "Install Update"}
+                      </button>
+                    )}
                     <p className="text-sm text-blue-700 dark:text-blue-300">
                       The server will restart automatically after installing the update.
                     </p>

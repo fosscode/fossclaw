@@ -17,6 +17,7 @@ import { generateSelfSignedCert } from "./cert-generator.js";
 import { isAuthEnabled, validateSession, getSessionFromRequest, setAuthCredentials, restoreAuthSessions, flushAuthSessions } from "./auth.js";
 import { ensureCredentials, getCredentialsFilePath } from "./credential-generator.js";
 import { CronJobStore } from "./cron-store.js";
+import { setLinearApiKey } from "./linear-client.js";
 import { CronScheduler } from "./cron-scheduler.js";
 import type { SocketData } from "./ws-bridge.js";
 import type { ServerWebSocket } from "bun";
@@ -53,6 +54,11 @@ let ollamaClient: OllamaClient | undefined;
   const savedPrefs = await prefsStore.load();
   const ollamaUrl = envUrl || savedPrefs.ollamaUrl;
   const ollamaModel = envModel || savedPrefs.ollamaModel;
+
+  // Initialize Linear API key from saved preferences (env var takes precedence at runtime via getApiKey)
+  if (savedPrefs.linearApiKey && !process.env.LINEAR_API_KEY) {
+    setLinearApiKey(savedPrefs.linearApiKey);
+  }
 
   if (ollamaUrl) {
     ollamaClient = new OllamaClient(ollamaUrl, ollamaModel || undefined);

@@ -301,6 +301,11 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
     prefsStore.save(body);
     const updated = await prefsStore.load();
 
+    // If Linear API key changed, update the runtime key immediately
+    if (typeof body.linearApiKey === "string") {
+      linear.setLinearApiKey(updated.linearApiKey || undefined);
+    }
+
     // If Ollama config changed, update the WsBridge client dynamically
     if (typeof body.ollamaUrl === "string" || typeof body.ollamaModel === "string") {
       const url = updated.ollamaUrl;
@@ -394,8 +399,8 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
   // ─── Linear integration ─────────────────────────────────────
 
   api.get("/linear/issues", async (c) => {
-    if (!process.env.LINEAR_API_KEY) {
-      return c.json({ error: "LINEAR_API_KEY not configured" }, 501);
+    if (!linear.hasApiKey()) {
+      return c.json({ error: "Linear API key not configured. Set it in Settings or via the LINEAR_API_KEY environment variable." }, 501);
     }
     try {
       const issues = await linear.searchIssues({
@@ -419,8 +424,8 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
   });
 
   api.get("/linear/issues/:id", async (c) => {
-    if (!process.env.LINEAR_API_KEY) {
-      return c.json({ error: "LINEAR_API_KEY not configured" }, 501);
+    if (!linear.hasApiKey()) {
+      return c.json({ error: "Linear API key not configured. Set it in Settings or via the LINEAR_API_KEY environment variable." }, 501);
     }
     try {
       const issue = await linear.getIssue(c.req.param("id"));
@@ -432,8 +437,8 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
   });
 
   api.get("/linear/teams", async (c) => {
-    if (!process.env.LINEAR_API_KEY) {
-      return c.json({ error: "LINEAR_API_KEY not configured" }, 501);
+    if (!linear.hasApiKey()) {
+      return c.json({ error: "Linear API key not configured. Set it in Settings or via the LINEAR_API_KEY environment variable." }, 501);
     }
     try {
       const teams = await linear.listTeams();
@@ -445,8 +450,8 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
   });
 
   api.get("/linear/labels", async (c) => {
-    if (!process.env.LINEAR_API_KEY) {
-      return c.json({ error: "LINEAR_API_KEY not configured" }, 501);
+    if (!linear.hasApiKey()) {
+      return c.json({ error: "Linear API key not configured. Set it in Settings or via the LINEAR_API_KEY environment variable." }, 501);
     }
     try {
       const labels = await linear.listLabels(c.req.query("team") || undefined);
@@ -458,8 +463,8 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
   });
 
   api.get("/linear/cycles", async (c) => {
-    if (!process.env.LINEAR_API_KEY) {
-      return c.json({ error: "LINEAR_API_KEY not configured" }, 501);
+    if (!linear.hasApiKey()) {
+      return c.json({ error: "Linear API key not configured. Set it in Settings or via the LINEAR_API_KEY environment variable." }, 501);
     }
     const team = c.req.query("team");
     if (!team) return c.json({ error: "team query param required" }, 400);
@@ -473,8 +478,8 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
   });
 
   api.get("/linear/states", async (c) => {
-    if (!process.env.LINEAR_API_KEY) {
-      return c.json({ error: "LINEAR_API_KEY not configured" }, 501);
+    if (!linear.hasApiKey()) {
+      return c.json({ error: "Linear API key not configured. Set it in Settings or via the LINEAR_API_KEY environment variable." }, 501);
     }
     const team = c.req.query("team");
     if (!team) return c.json({ error: "team query param required" }, 400);
@@ -488,8 +493,8 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
   });
 
   api.get("/linear/members", async (c) => {
-    if (!process.env.LINEAR_API_KEY) {
-      return c.json({ error: "LINEAR_API_KEY not configured" }, 501);
+    if (!linear.hasApiKey()) {
+      return c.json({ error: "Linear API key not configured. Set it in Settings or via the LINEAR_API_KEY environment variable." }, 501);
     }
     const team = c.req.query("team");
     if (!team) return c.json({ error: "team query param required" }, 400);

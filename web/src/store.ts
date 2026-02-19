@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import type { SessionState, PermissionRequest, ChatMessage, SdkSessionInfo, TaskItem, LinearIssue, Playbook, CronJob } from "./types.js";
 
+export interface Toast {
+  id: string;
+  message: string;
+  variant: "success" | "error" | "info";
+}
+
 interface AppState {
   // Sessions
   sessions: Map<string, SessionState>;
@@ -67,11 +73,15 @@ interface AppState {
   appUrl: string;
   ollamaUrl: string;
   ollamaModel: string;
+  linearApiKey: string;
   homeResetKey: number;
   homeProvider: "claude" | "opencode";
   coderMode: boolean;
   recentDirs: string[];
   defaultModels: Map<"claude" | "opencode", string>;
+
+  // Toasts
+  toasts: Toast[];
 
   // Cron Jobs
   cronJobs: CronJob[];
@@ -112,6 +122,10 @@ interface AppState {
   setPrefilledText: (text: string | null) => void;
   setPrefilledIssue: (issue: LinearIssue | null) => void;
   clearPrefill: () => void;
+
+  // Toast actions
+  addToast: (message: string, variant?: Toast["variant"]) => void;
+  removeToast: (id: string) => void;
 
   // Cron actions
   setCronJobs: (jobs: CronJob[]) => void;
@@ -235,6 +249,7 @@ export const useStore = create<AppState>((set) => ({
   appUrl: "",
   ollamaUrl: "",
   ollamaModel: "",
+  linearApiKey: "",
   homeResetKey: 0,
   homeProvider: "claude",
   coderMode: false,
@@ -254,6 +269,18 @@ export const useStore = create<AppState>((set) => ({
       return new Map();
     }
   })(),
+
+  // Toasts
+  toasts: [],
+
+  // Toast actions
+  addToast: (message, variant = "info") =>
+    set((s) => {
+      const id = Math.random().toString(36).slice(2);
+      return { toasts: [...s.toasts, { id, message, variant }] };
+    }),
+  removeToast: (id) =>
+    set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 
   // Cron Jobs
   cronJobs: [],

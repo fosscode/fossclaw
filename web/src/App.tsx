@@ -12,6 +12,7 @@ import { VersionBadge } from "./components/VersionBadge.js";
 import { KeyboardShortcuts } from "./components/KeyboardShortcuts.js";
 import { Settings } from "./components/Settings.js";
 import { CronPanel } from "./components/CronPanel.js";
+import { Toasts } from "./components/Toasts.js";
 import { Login } from "./components/Login.js";
 import { api } from "./api.js";
 import { connectSession, disconnectSession } from "./ws.js";
@@ -235,6 +236,8 @@ export default function App() {
       {showCronPanel && (
         <CronPanel onClose={() => useStore.getState().setShowCronPanel(false)} />
       )}
+
+      <Toasts />
 
       {/* Task panel — overlay on mobile, inline on desktop */}
       {currentSessionId && (

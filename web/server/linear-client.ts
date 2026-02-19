@@ -54,9 +54,20 @@ export interface SearchParams {
   limit?: number;
 }
 
+// Runtime override — set by routes.ts when the user saves a key via Settings
+let _runtimeApiKey: string | undefined;
+
+export function setLinearApiKey(key: string | undefined): void {
+  _runtimeApiKey = key || undefined;
+}
+
+export function hasApiKey(): boolean {
+  return !!(_runtimeApiKey || process.env.LINEAR_API_KEY);
+}
+
 function getApiKey(): string {
-  const key = process.env.LINEAR_API_KEY;
-  if (!key) throw new Error("LINEAR_API_KEY environment variable is not set");
+  const key = _runtimeApiKey || process.env.LINEAR_API_KEY;
+  if (!key) throw new Error("Linear API key is not configured. Set it in Settings or via the LINEAR_API_KEY environment variable.");
   return key;
 }
 

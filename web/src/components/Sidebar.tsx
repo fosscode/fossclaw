@@ -190,7 +190,7 @@ export function Sidebar() {
       }
     } catch (err) {
       console.error("Failed to resume session:", err);
-      alert(`Failed to resume session: ${err instanceof Error ? err.message : String(err)}`);
+      useStore.getState().addToast(`Failed to resume session: ${err instanceof Error ? err.message : String(err)}`, "error");
     }
   }, [currentSessionId, setCurrentSession, removeSession]);
 
@@ -594,9 +594,9 @@ export function Sidebar() {
                   setMenuOpen(false);
                   const granted = await requestNotificationPermission();
                   if (granted) {
-                    alert("Notifications enabled! You'll be notified when other sessions need input.");
+                    useStore.getState().addToast("Notifications enabled! You'll be notified when other sessions need input.", "success");
                   } else {
-                    alert("Notifications were denied. Enable them in your browser settings.");
+                    useStore.getState().addToast("Notifications were denied. Enable them in your browser settings.", "info");
                   }
                 }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
