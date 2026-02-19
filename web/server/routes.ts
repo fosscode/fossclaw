@@ -323,6 +323,17 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
     return c.json(updated);
   });
 
+  api.post("/ollama/test", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const url: string = body.url || (prefsStore ? (await prefsStore.load()).ollamaUrl : "") || "";
+    const model: string | undefined = body.model || (prefsStore ? (await prefsStore.load()).ollamaModel : "") || undefined;
+    if (!url) return c.json({ ok: false, error: "No Ollama URL configured" }, 400);
+    const client = new OllamaClient(url, model);
+    const available = await client.isAvailable().catch(() => false);
+    if (!available) return c.json({ ok: false, error: `Could not reach Ollama at ${url}` });
+    return c.json({ ok: true });
+  });
+
   // ─── Filesystem browsing ─────────────────────────────────────
 
   api.get("/fs/list", async (c) => {

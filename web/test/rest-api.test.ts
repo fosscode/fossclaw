@@ -155,4 +155,44 @@ describe("REST API", () => {
       expect(data.error).toBe("Cannot read directory");
     });
   });
+
+  // ─── Ollama Test ─────────────────────────────────────────────────
+
+  describe("POST /api/ollama/test", () => {
+    test("returns 400 when no URL provided", async () => {
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/ollama/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.ok).toBe(false);
+      expect(data.error).toBeString();
+    });
+
+    test("returns ok:false when Ollama is unreachable", async () => {
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/ollama/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "http://localhost:19999" }),
+      });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.ok).toBe(false);
+      expect(data.error).toBeString();
+    });
+
+    test("accepts optional model parameter", async () => {
+      const res = await ctx.authFetch(`${ctx.baseUrl}/api/ollama/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "http://localhost:19999", model: "llama3.2:3b" }),
+      });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      // Still unreachable, but the request itself should be well-formed
+      expect(data.ok).toBe(false);
+    });
+  });
 });

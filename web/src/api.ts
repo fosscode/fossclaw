@@ -230,4 +230,7 @@ export const api = {
 
   getCronStatus: () =>
     get<{ running: boolean; activeJobs: string[] }>("/cron/status"),
+
+  testOllama: (url: string, model?: string) =>
+    post<{ ok: boolean; error?: string }>("/ollama/test", { url, model }),
 };

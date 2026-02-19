@@ -27,6 +27,8 @@ export function Settings({ onClose }: { onClose: () => void }) {
   useEffect(() => { setOllamaModelInput(ollamaModel); }, [ollamaModel]);
   const [testStatus, setTestStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
   const [testError, setTestError] = useState<string>("");
+  const [ollamaTestStatus, setOllamaTestStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
+  const [ollamaTestError, setOllamaTestError] = useState<string>("");
 
   const [updateStatus, setUpdateStatus] = useState<{
     checking: boolean;
@@ -215,7 +217,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
                   <input
                     type="url"
                     value={ollamaUrlInput}
-                    onChange={(e) => setOllamaUrlInput(e.target.value)}
+                    onChange={(e) => { setOllamaUrlInput(e.target.value); setOllamaTestStatus("idle"); }}
                     onBlur={() => setOllamaUrl(ollamaUrlInput)}
                     placeholder="http://localhost:11434"
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
@@ -228,11 +230,43 @@ export function Settings({ onClose }: { onClose: () => void }) {
                   <input
                     type="text"
                     value={ollamaModelInput}
-                    onChange={(e) => setOllamaModelInput(e.target.value)}
+                    onChange={(e) => { setOllamaModelInput(e.target.value); setOllamaTestStatus("idle"); }}
                     onBlur={() => setOllamaModel(ollamaModelInput)}
                     placeholder="llama3.2:3b"
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
                   />
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    onClick={async () => {
+                      if (ollamaUrlInput !== ollamaUrl) setOllamaUrl(ollamaUrlInput);
+                      if (ollamaModelInput !== ollamaModel) setOllamaModel(ollamaModelInput);
+                      setOllamaTestStatus("sending");
+                      setOllamaTestError("");
+                      try {
+                        const result = await api.testOllama(ollamaUrlInput, ollamaModelInput || undefined);
+                        if (result.ok) {
+                          setOllamaTestStatus("ok");
+                        } else {
+                          setOllamaTestStatus("error");
+                          setOllamaTestError(result.error || "Connection failed");
+                        }
+                      } catch (err) {
+                        setOllamaTestStatus("error");
+                        setOllamaTestError(err instanceof Error ? err.message : "Failed");
+                      }
+                    }}
+                    disabled={ollamaTestStatus === "sending" || !ollamaUrlInput}
+                    className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {ollamaTestStatus === "sending" ? "Testing..." : "Test Connection"}
+                  </button>
+                  {ollamaTestStatus === "ok" && (
+                    <span className="text-sm text-green-600 dark:text-green-400">Connected!</span>
+                  )}
+                  {ollamaTestStatus === "error" && (
+                    <span className="text-sm text-red-600 dark:text-red-400">{ollamaTestError}</span>
+                  )}
                 </div>
               </div>
             </section>
