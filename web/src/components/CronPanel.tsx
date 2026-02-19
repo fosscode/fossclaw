@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useStore } from "../store.js";
 import { api } from "../api.js";
-import type { CronJob, CronJobType, CronRun, GitHubPRReviewConfig, GitHubCommentsCIConfig, E2ETestingConfig, LinearAgentConfig } from "../types.js";
+import type { CronJob, CronJobType, CronRun, GitHubPRReviewConfig, GitHubCommentsCIConfig, E2ETestingConfig, LinearAgentConfig, SlackChannelConfig } from "../types.js";
 import { DEFAULT_PROMPTS } from "../../server/cron-types.js";
 
 interface Props {
@@ -13,6 +13,7 @@ const JOB_TYPE_LABELS: Record<CronJobType, string> = {
   github_comments_ci: "GitHub Comments / CI",
   e2e_testing: "E2E Testing",
   linear_agent: "Linear Agent",
+  slack_channel: "Slack Channel",
 };
 
 const JOB_TYPE_COLORS: Record<CronJobType, string> = {
@@ -20,6 +21,7 @@ const JOB_TYPE_COLORS: Record<CronJobType, string> = {
   github_comments_ci: "bg-orange-500/15 text-orange-700 dark:text-orange-300",
   e2e_testing: "bg-green-500/15 text-green-700 dark:text-green-300",
   linear_agent: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  slack_channel: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-300",
 };
 
 function formatInterval(seconds: number): string {
@@ -46,6 +48,8 @@ function getDefaultConfig(type: CronJobType): CronJob["config"] {
       return { testCommand: "bun test", cwd: "", onlyOnFailure: true, promptTemplate: "" } as E2ETestingConfig;
     case "linear_agent":
       return { teamKey: "", agentLabel: "Agent", watchComments: true, commentTrigger: "@Agent", cwd: "", promptTemplate: "", inProgressState: "" } as LinearAgentConfig;
+    case "slack_channel":
+      return { channels: [], triggerKeywords: [], ignoreBots: true, cwd: "", promptTemplate: "" } as SlackChannelConfig;
   }
 }
 
@@ -210,6 +214,34 @@ function LinearAgentConfigForm({ config, onChange }: { config: LinearAgentConfig
       <label className="block">
         <span className="text-xs font-medium text-cc-fg">Prompt Template</span>
         <textarea value={config.promptTemplate} onChange={(e) => onChange({ ...config, promptTemplate: e.target.value })} className="w-full px-3 py-2 mt-1 text-xs rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg font-mono-code resize-none focus:outline-none focus:border-cc-primary/50" rows={4} placeholder={DEFAULT_PROMPTS.linear_agent} />
+      </label>
+    </div>
+  );
+}
+
+function SlackChannelConfigForm({ config, onChange }: { config: SlackChannelConfig; onChange: (c: SlackChannelConfig) => void }) {
+  return (
+    <div className="space-y-3">
+      <label className="block">
+        <span className="text-xs font-medium text-cc-fg">Channel IDs</span>
+        <p className="text-[10px] text-cc-muted mb-1">Comma-separated Slack channel IDs (e.g. C01ABCDEF)</p>
+        <input type="text" value={config.channels.join(", ")} onChange={(e) => onChange({ ...config, channels: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} className="w-full px-3 py-1.5 mt-1 text-sm rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg focus:outline-none focus:border-cc-primary/50" placeholder="C01ABCDEF, C02GHIJKL" />
+      </label>
+      <label className="block">
+        <span className="text-xs font-medium text-cc-fg">Trigger Keywords</span>
+        <TagInput tags={config.triggerKeywords} onChange={(triggerKeywords) => onChange({ ...config, triggerKeywords })} placeholder="Add keyword (empty = all messages)" />
+      </label>
+      <label className="flex items-center gap-2">
+        <input type="checkbox" checked={config.ignoreBots} onChange={(e) => onChange({ ...config, ignoreBots: e.target.checked })} className="rounded" />
+        <span className="text-xs text-cc-fg">Ignore bot messages</span>
+      </label>
+      <label className="block">
+        <span className="text-xs font-medium text-cc-fg">Working Directory</span>
+        <input type="text" value={config.cwd} onChange={(e) => onChange({ ...config, cwd: e.target.value })} className="w-full px-3 py-1.5 mt-1 text-sm rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg focus:outline-none focus:border-cc-primary/50" placeholder="/path/to/project" />
+      </label>
+      <label className="block">
+        <span className="text-xs font-medium text-cc-fg">Prompt Template</span>
+        <textarea value={config.promptTemplate} onChange={(e) => onChange({ ...config, promptTemplate: e.target.value })} className="w-full px-3 py-2 mt-1 text-xs rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg font-mono-code resize-none focus:outline-none focus:border-cc-primary/50" rows={4} placeholder={DEFAULT_PROMPTS.slack_channel} />
       </label>
     </div>
   );
@@ -642,6 +674,7 @@ export function CronPanel({ onClose }: Props) {
                     {type === "github_comments_ci" && <GitHubCommentsCIConfigForm config={config as GitHubCommentsCIConfig} onChange={setConfig as any} />}
                     {type === "e2e_testing" && <E2ETestingConfigForm config={config as E2ETestingConfig} onChange={setConfig as any} />}
                     {type === "linear_agent" && <LinearAgentConfigForm config={config as LinearAgentConfig} onChange={setConfig as any} />}
+                    {type === "slack_channel" && <SlackChannelConfigForm config={config as SlackChannelConfig} onChange={setConfig as any} />}
                   </div>
 
                   {/* Actions */}

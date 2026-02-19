@@ -18,6 +18,7 @@ import { isAuthEnabled, validateSession, getSessionFromRequest, setAuthCredentia
 import { ensureCredentials, getCredentialsFilePath } from "./credential-generator.js";
 import { CronJobStore } from "./cron-store.js";
 import { setLinearApiKey } from "./linear-client.js";
+import { setGitHubToken } from "./cron-checkers.js";
 import { CronScheduler } from "./cron-scheduler.js";
 import type { SocketData } from "./ws-bridge.js";
 import type { ServerWebSocket } from "bun";
@@ -47,17 +48,21 @@ const prefsStore = new UserPreferencesStore();
 // Ollama client for auto-naming sessions (env vars override, then preferences)
 let ollamaClient: OllamaClient | undefined;
 
+const savedPrefs = await prefsStore.load();
 {
   const envUrl = process.env.OLLAMA_URL;
   const envModel = process.env.OLLAMA_MODEL;
-  // Load preferences to check for saved Ollama config
-  const savedPrefs = await prefsStore.load();
   const ollamaUrl = envUrl || savedPrefs.ollamaUrl;
   const ollamaModel = envModel || savedPrefs.ollamaModel;
 
   // Initialize Linear API key from saved preferences (env var takes precedence at runtime via getApiKey)
   if (savedPrefs.linearApiKey && !process.env.LINEAR_API_KEY) {
     setLinearApiKey(savedPrefs.linearApiKey);
+  }
+
+  // Initialize GitHub token from saved preferences (env var takes precedence at runtime via getGitHubToken)
+  if (savedPrefs.githubToken && !process.env.GITHUB_TOKEN) {
+    setGitHubToken(savedPrefs.githubToken);
   }
 
   if (ollamaUrl) {
@@ -265,7 +270,7 @@ console.log(`  Auto-naming:       smart extraction (always on)${ollamaClient ? "
 console.log(`  Session TTL:       ${sessionTTLMs > 0 ? `${sessionTTLDays} days` : "disabled (set FOSSCLAW_SESSION_TTL_DAYS to enable)"}`);
 console.log(`  CLI WebSocket:     ${wsProtocol}://localhost:${server.port}/ws/cli/:sessionId`);
 console.log(`  Browser WebSocket: ${wsProtocol}://localhost:${server.port}/ws/browser/:sessionId`);
-console.log(`  GitHub Token:      ${process.env.GITHUB_TOKEN ? "configured" : "not set (cron PR/CI features need GITHUB_TOKEN)"}`);
+console.log(`  GitHub Token:      ${process.env.GITHUB_TOKEN || savedPrefs.githubToken ? "configured" : "not set (cron PR/CI features need GITHUB_TOKEN)"}`);
 console.log(`  Cron Jobs:         ${enabledCronJobs} of ${cronJobs.length} enabled`);
 
 // In dev mode, log that Vite should be run separately

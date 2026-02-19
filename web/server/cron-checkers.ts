@@ -6,16 +6,61 @@ import type {
   GitHubCommentsCIConfig,
   E2ETestingConfig,
   LinearAgentConfig,
+  SlackChannelConfig,
   DEFAULT_PROMPTS,
 } from "./cron-types.js";
 import { DEFAULT_PROMPTS as PROMPTS } from "./cron-types.js";
 import * as linear from "./linear-client.js";
 
+// ── Slack API helpers ──────────────────────────────────────────────────
+
+let _runtimeSlackBotToken: string | undefined;
+
+export function setSlackBotToken(token: string | undefined): void {
+  _runtimeSlackBotToken = token;
+}
+
+function getSlackBotToken(): string {
+  const token = _runtimeSlackBotToken || process.env.SLACK_BOT_TOKEN;
+  if (!token) throw new Error("Slack Bot Token is not configured. Set it in Settings or via the SLACK_BOT_TOKEN environment variable.");
+  return token;
+}
+
+async function slackFetch<T>(method: string, params: Record<string, string> = {}): Promise<T> {
+  const token = getSlackBotToken();
+  const url = new URL(`https://slack.com/api/${method}`);
+  for (const [k, v] of Object.entries(params)) {
+    url.searchParams.set(k, v);
+  }
+  const response = await fetch(url.toString(), {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Slack API error: ${response.status}`);
+  }
+
+  const data = await response.json() as { ok: boolean; error?: string } & T;
+  if (!data.ok) {
+    throw new Error(`Slack API error: ${data.error || "unknown"}`);
+  }
+
+  return data as T;
+}
+
 // ── GitHub API helpers ──────────────────────────────────────────────────
 
+let _runtimeGitHubToken: string | undefined;
+
+export function setGitHubToken(token: string | undefined): void {
+  _runtimeGitHubToken = token;
+}
+
 function getGitHubToken(): string {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) throw new Error("GITHUB_TOKEN environment variable is not set");
+  const token = _runtimeGitHubToken || process.env.GITHUB_TOKEN;
+  if (!token) throw new Error("GitHub token is not configured. Set it in Settings or via the GITHUB_TOKEN environment variable.");
   return token;
 }
 
@@ -353,6 +398,92 @@ export async function checkLinearAgent(job: CronJob): Promise<CheckerResult> {
   }
 }
 
+// ── Slack Channel Checker ──────────────────────────────────────────────
+
+interface SlackMessage {
+  type: string;
+  ts: string;
+  user?: string;
+  bot_id?: string;
+  text: string;
+  subtype?: string;
+}
+
+interface SlackConversationHistoryResponse {
+  ok: boolean;
+  messages: SlackMessage[];
+}
+
+interface SlackConversationInfoResponse {
+  ok: boolean;
+  channel: { id: string; name: string };
+}
+
+export async function checkSlackChannel(job: CronJob): Promise<CheckerResult> {
+  const config = job.config as SlackChannelConfig;
+  const triggers: CheckerTrigger[] = [];
+
+  try {
+    // Look back to the last run time, or 5 minutes
+    const oldest = job.lastRunAt
+      ? String(job.lastRunAt / 1000)
+      : String((Date.now() - 5 * 60 * 1000) / 1000);
+
+    for (const channelId of config.channels) {
+      // Fetch channel info for the name
+      let channelName = channelId;
+      try {
+        const info = await slackFetch<SlackConversationInfoResponse>("conversations.info", { channel: channelId });
+        channelName = info.channel.name;
+      } catch {
+        // Fall back to channel ID if info fetch fails
+      }
+
+      const history = await slackFetch<SlackConversationHistoryResponse>("conversations.history", {
+        channel: channelId,
+        oldest,
+        limit: "50",
+      });
+
+      for (const msg of history.messages) {
+        // Skip non-message types and subtypes like channel_join
+        if (msg.type !== "message" || msg.subtype) continue;
+
+        // Skip bot messages if configured
+        if (config.ignoreBots && msg.bot_id) continue;
+
+        // Filter by trigger keywords if any are set
+        if (config.triggerKeywords.length > 0) {
+          const textLower = msg.text.toLowerCase();
+          const hasKeyword = config.triggerKeywords.some((kw) => textLower.includes(kw.toLowerCase()));
+          if (!hasKeyword) continue;
+        }
+
+        const template = config.promptTemplate || PROMPTS.slack_channel;
+        const prompt = renderTemplate(template, {
+          "channel.id": channelId,
+          "channel.name": channelName,
+          "message.user": msg.user || "unknown",
+          "message.text": msg.text,
+          "message.timestamp": new Date(Number(msg.ts) * 1000).toISOString(),
+        });
+
+        triggers.push({
+          dedupeKey: `slack:${channelId}:${msg.ts}`,
+          sessionName: `Slack: #${channelName}`,
+          prompt,
+          cwd: config.cwd,
+          summary: `Message in #${channelName} from ${msg.user || "unknown"}: ${msg.text.substring(0, 80)}`,
+        });
+      }
+    }
+
+    return { triggers };
+  } catch (err) {
+    return { triggers: [], error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 // ── Dispatcher ─────────────────────────────────────────────────────────
 
 export async function runChecker(job: CronJob): Promise<CheckerResult> {
@@ -365,6 +496,8 @@ export async function runChecker(job: CronJob): Promise<CheckerResult> {
       return checkE2ETesting(job);
     case "linear_agent":
       return checkLinearAgent(job);
+    case "slack_channel":
+      return checkSlackChannel(job);
     default:
       return { triggers: [], error: `Unknown job type: ${job.type}` };
   }

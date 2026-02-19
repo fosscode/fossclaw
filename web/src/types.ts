@@ -77,4 +77,5 @@ export type {
   GitHubCommentsCIConfig,
   E2ETestingConfig,
   LinearAgentConfig,
+  SlackChannelConfig,
 } from "../server/cron-types.js";

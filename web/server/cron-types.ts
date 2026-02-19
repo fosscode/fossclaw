@@ -1,6 +1,6 @@
 // ─── Cron Job Types ───────────────────────────────────────────────────────────
 
-export type CronJobType = "pr_review" | "github_comments_ci" | "e2e_testing" | "linear_agent";
+export type CronJobType = "pr_review" | "github_comments_ci" | "e2e_testing" | "linear_agent" | "slack_channel";
 
 // ── Type-specific configs ──────────────────────────────────────────────
 
@@ -62,11 +62,25 @@ export interface LinearAgentConfig {
   inProgressState: string;
 }
 
+export interface SlackChannelConfig {
+  /** Slack channel IDs to watch (e.g. ["C01ABCDEF"]) */
+  channels: string[];
+  /** Trigger keywords in messages (empty = all messages trigger) */
+  triggerKeywords: string[];
+  /** Ignore messages from these bot user IDs */
+  ignoreBots: boolean;
+  /** Working directory for spawned Claude sessions */
+  cwd: string;
+  /** Custom prompt template */
+  promptTemplate: string;
+}
+
 export type CronJobConfigMap = {
   pr_review: GitHubPRReviewConfig;
   github_comments_ci: GitHubCommentsCIConfig;
   e2e_testing: E2ETestingConfig;
   linear_agent: LinearAgentConfig;
+  slack_channel: SlackChannelConfig;
 };
 
 // ── Core types ──────────────────────────────────────────────────────────
@@ -186,6 +200,17 @@ Priority: {{issue.priority}}
 Labels: {{issue.labels}}
 
 Please implement the required changes.`,
+
+  slack_channel: `A message in a Slack channel needs attention:
+
+Channel: #{{channel.name}} ({{channel.id}})
+From: {{message.user}}
+Time: {{message.timestamp}}
+
+Message:
+"{{message.text}}"
+
+Please address this message.`,
 
   linear_comment: `A comment on a Linear issue is requesting your help:
 

@@ -22,6 +22,8 @@ export interface UserPreferences {
   ollamaUrl: string;
   ollamaModel: string;
   linearApiKey: string;
+  githubToken: string;
+  slackBotToken: string;
 }
 
 const DEFAULTS: UserPreferences = {
@@ -36,6 +38,8 @@ const DEFAULTS: UserPreferences = {
   ollamaUrl: "",
   ollamaModel: "",
   linearApiKey: "",
+  githubToken: "",
+  slackBotToken: "",
 };
 
 export class UserPreferencesStore {

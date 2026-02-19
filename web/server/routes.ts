@@ -12,6 +12,7 @@ import type { CronJobStore } from "./cron-store.js";
 import type { CronScheduler } from "./cron-scheduler.js";
 import type { CronJob } from "./cron-types.js";
 import * as linear from "./linear-client.js";
+import { setGitHubToken, setSlackBotToken } from "./cron-checkers.js";
 import { requireAuth, validateCredentials, createSession, deleteSession, setAuthCookie, clearAuthCookie, isAuthEnabled } from "./auth.js";
 import { UpdateChecker } from "./update-checker.js";
 import { OllamaClient } from "./ollama-client.js";
@@ -304,6 +305,16 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
     // If Linear API key changed, update the runtime key immediately
     if (typeof body.linearApiKey === "string") {
       linear.setLinearApiKey(updated.linearApiKey || undefined);
+    }
+
+    // If GitHub token changed, update the runtime token immediately
+    if (typeof body.githubToken === "string") {
+      setGitHubToken(updated.githubToken || undefined);
+    }
+
+    // If Slack Bot Token changed, update the runtime token immediately
+    if (typeof body.slackBotToken === "string") {
+      setSlackBotToken(updated.slackBotToken || undefined);
     }
 
     // If Ollama config changed, update the WsBridge client dynamically

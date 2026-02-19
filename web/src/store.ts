@@ -74,6 +74,8 @@ interface AppState {
   ollamaUrl: string;
   ollamaModel: string;
   linearApiKey: string;
+  githubToken: string;
+  slackBotToken: string;
   homeResetKey: number;
   homeProvider: "claude" | "opencode";
   coderMode: boolean;
@@ -103,6 +105,8 @@ interface AppState {
   setOllamaUrl: (url: string) => void;
   setOllamaModel: (model: string) => void;
   setLinearApiKey: (key: string) => void;
+  setGitHubToken: (token: string) => void;
+  setSlackBotToken: (token: string) => void;
   setCoderMode: (enabled: boolean) => void;
   toggleCoderMode: () => void;
   newSession: (provider?: "claude" | "opencode") => void;
@@ -251,6 +255,8 @@ export const useStore = create<AppState>((set) => ({
   ollamaUrl: "",
   ollamaModel: "",
   linearApiKey: "",
+  githubToken: "",
+  slackBotToken: "",
   homeResetKey: 0,
   homeProvider: "claude",
   coderMode: true,
@@ -347,6 +353,14 @@ export const useStore = create<AppState>((set) => ({
     set({ linearApiKey: key });
     import("./api.js").then(({ api }) => api.updatePreferences({ linearApiKey: key }).catch(() => {}));
   },
+  setGitHubToken: (token) => {
+    set({ githubToken: token });
+    import("./api.js").then(({ api }) => api.updatePreferences({ githubToken: token }).catch(() => {}));
+  },
+  setSlackBotToken: (token) => {
+    set({ slackBotToken: token });
+    import("./api.js").then(({ api }) => api.updatePreferences({ slackBotToken: token }).catch(() => {}));
+  },
   setCoderMode: (enabled) => set({ coderMode: enabled }),
   toggleCoderMode: () => set((s) => ({ coderMode: !s.coderMode })),
   newSession: (provider?: "claude" | "opencode") => set((s) => ({ 
@@ -399,6 +413,12 @@ export const useStore = create<AppState>((set) => ({
       }
       if (typeof prefs.linearApiKey === "string") {
         updates.linearApiKey = prefs.linearApiKey;
+      }
+      if (typeof prefs.githubToken === "string") {
+        updates.githubToken = prefs.githubToken;
+      }
+      if (typeof prefs.slackBotToken === "string") {
+        updates.slackBotToken = prefs.slackBotToken;
       }
       if (prefs.defaultModels && typeof prefs.defaultModels === "object") {
         const validEntries = Object.entries(prefs.defaultModels).filter(
