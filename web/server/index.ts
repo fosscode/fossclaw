@@ -18,7 +18,7 @@ import { isAuthEnabled, validateSession, getSessionFromRequest, setAuthCredentia
 import { ensureCredentials, getCredentialsFilePath } from "./credential-generator.js";
 import { CronJobStore } from "./cron-store.js";
 import { setLinearApiKey } from "./linear-client.js";
-import { setGitHubToken } from "./cron-checkers.js";
+import { setGitHubToken, setSlackBotToken } from "./cron-checkers.js";
 import { CronScheduler } from "./cron-scheduler.js";
 import type { SocketData } from "./ws-bridge.js";
 import type { ServerWebSocket } from "bun";
@@ -63,6 +63,11 @@ const savedPrefs = await prefsStore.load();
   // Initialize GitHub token from saved preferences (env var takes precedence at runtime via getGitHubToken)
   if (savedPrefs.githubToken && !process.env.GITHUB_TOKEN) {
     setGitHubToken(savedPrefs.githubToken);
+  }
+
+  // Initialize Slack Bot Token from saved preferences (env var takes precedence at runtime via getSlackBotToken)
+  if (savedPrefs.slackBotToken && !process.env.SLACK_BOT_TOKEN) {
+    setSlackBotToken(savedPrefs.slackBotToken);
   }
 
   if (ollamaUrl) {

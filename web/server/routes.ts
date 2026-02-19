@@ -350,6 +350,41 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
     return c.json({ ok: true });
   });
 
+  api.post("/slack/test", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const token: string = body.token || (prefsStore ? (await prefsStore.load()).slackBotToken : "") || "";
+    if (!token) return c.json({ ok: false, error: "No Slack Bot Token configured" }, 400);
+    try {
+      const res = await fetch("https://slack.com/api/auth.test", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json() as { ok: boolean; error?: string; team?: string; user?: string };
+      if (!data.ok) return c.json({ ok: false, error: `Slack auth failed: ${data.error}` });
+      return c.json({ ok: true, team: data.team, user: data.user });
+    } catch (err) {
+      return c.json({ ok: false, error: err instanceof Error ? err.message : "Connection failed" });
+    }
+  });
+
+  api.get("/slack/channels", async (c) => {
+    const token = (prefsStore ? (await prefsStore.load()).slackBotToken : "") || process.env.SLACK_BOT_TOKEN || "";
+    if (!token) return c.json({ error: "Slack Bot Token not configured" }, 501);
+    try {
+      const res = await fetch("https://slack.com/api/conversations.list?types=public_channel,private_channel&limit=200&exclude_archived=true", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json() as { ok: boolean; error?: string; channels: Array<{ id: string; name: string; is_member: boolean }> };
+      if (!data.ok) return c.json({ error: `Slack API error: ${data.error}` }, 500);
+      const channels = data.channels
+        .filter((ch) => ch.is_member)
+        .map((ch) => ({ id: ch.id, name: ch.name }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      return c.json({ channels });
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : "Failed to fetch channels" }, 500);
+    }
+  });
+
   // ─── Filesystem browsing ─────────────────────────────────────
 
   api.get("/fs/list", async (c) => {

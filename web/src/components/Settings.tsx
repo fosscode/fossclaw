@@ -37,6 +37,13 @@ export function Settings({ onClose }: { onClose: () => void }) {
   const setGitHubToken = useStore((s) => s.setGitHubToken);
   const [githubTokenInput, setGitHubTokenInput] = useState(githubToken);
   useEffect(() => { setGitHubTokenInput(githubToken); }, [githubToken]);
+  const slackBotToken = useStore((s) => s.slackBotToken);
+  const setSlackBotToken = useStore((s) => s.setSlackBotToken);
+  const [slackBotTokenInput, setSlackBotTokenInput] = useState(slackBotToken);
+  useEffect(() => { setSlackBotTokenInput(slackBotToken); }, [slackBotToken]);
+  const [slackTestStatus, setSlackTestStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
+  const [slackTestError, setSlackTestError] = useState<string>("");
+  const [slackTestInfo, setSlackTestInfo] = useState<string>("");
 
   const [updateStatus, setUpdateStatus] = useState<{
     checking: boolean;
@@ -312,6 +319,55 @@ export function Settings({ onClose }: { onClose: () => void }) {
                     placeholder="ghp_..."
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
                   />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-gray-700 dark:text-gray-300 text-sm">
+                    Slack Bot Token
+                  </label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Used for Slack channel cron jobs. Requires <code className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">channels:history</code> and <code className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">channels:read</code> scopes. Overrides the <code className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">SLACK_BOT_TOKEN</code> environment variable.
+                  </p>
+                  <input
+                    type="password"
+                    value={slackBotTokenInput}
+                    onChange={(e) => { setSlackBotTokenInput(e.target.value); setSlackTestStatus("idle"); }}
+                    onBlur={() => setSlackBotToken(slackBotTokenInput)}
+                    placeholder="xoxb-..."
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
+                  />
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      onClick={async () => {
+                        if (slackBotTokenInput !== slackBotToken) setSlackBotToken(slackBotTokenInput);
+                        setSlackTestStatus("sending");
+                        setSlackTestError("");
+                        setSlackTestInfo("");
+                        try {
+                          const result = await api.testSlack(slackBotTokenInput || undefined);
+                          if (result.ok) {
+                            setSlackTestStatus("ok");
+                            setSlackTestInfo(result.team ? `Team: ${result.team}` : "Connected!");
+                          } else {
+                            setSlackTestStatus("error");
+                            setSlackTestError(result.error || "Connection failed");
+                          }
+                        } catch (err) {
+                          setSlackTestStatus("error");
+                          setSlackTestError(err instanceof Error ? err.message : "Failed");
+                        }
+                      }}
+                      disabled={slackTestStatus === "sending" || !slackBotTokenInput}
+                      className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {slackTestStatus === "sending" ? "Testing..." : "Test Connection"}
+                    </button>
+                    {slackTestStatus === "ok" && (
+                      <span className="text-sm text-green-600 dark:text-green-400">{slackTestInfo}</span>
+                    )}
+                    {slackTestStatus === "error" && (
+                      <span className="text-sm text-red-600 dark:text-red-400">{slackTestError}</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </section>

@@ -220,16 +220,90 @@ function LinearAgentConfigForm({ config, onChange }: { config: LinearAgentConfig
 }
 
 function SlackChannelConfigForm({ config, onChange }: { config: SlackChannelConfig; onChange: (c: SlackChannelConfig) => void }) {
+  const [channelInput, setChannelInput] = useState("");
+  const [loadingChannels, setLoadingChannels] = useState(false);
+  const [availableChannels, setAvailableChannels] = useState<Array<{ id: string; name: string }>>([]);
+  const [showPicker, setShowPicker] = useState(false);
+
+  async function fetchChannels() {
+    setLoadingChannels(true);
+    try {
+      const result = await api.getSlackChannels();
+      setAvailableChannels(result.channels);
+      setShowPicker(true);
+    } catch {
+      // ignore
+    }
+    setLoadingChannels(false);
+  }
+
+  function getChannelName(id: string): string {
+    const ch = availableChannels.find((c) => c.id === id);
+    return ch ? `#${ch.name}` : id;
+  }
+
   return (
     <div className="space-y-3">
+      <div className="block">
+        <span className="text-xs font-medium text-cc-fg">Channels</span>
+        <p className="text-[10px] text-cc-muted mb-1">Slack channel IDs to watch. Use "Browse Channels" to pick from your workspace, or type an ID and press Enter.</p>
+        <div className="flex gap-2 mb-1.5">
+          <button
+            onClick={fetchChannels}
+            disabled={loadingChannels}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg hover:bg-cc-hover disabled:opacity-50 transition-colors cursor-pointer"
+          >
+            {loadingChannels ? "Loading..." : "Browse Channels"}
+          </button>
+        </div>
+        {showPicker && availableChannels.length > 0 && (
+          <div className="max-h-32 overflow-y-auto border border-cc-border rounded-lg bg-cc-input-bg mb-2">
+            {availableChannels
+              .filter((ch) => !config.channels.includes(ch.id))
+              .filter((ch) => !channelInput || ch.name.toLowerCase().includes(channelInput.toLowerCase()))
+              .map((ch) => (
+                <button
+                  key={ch.id}
+                  onClick={() => onChange({ ...config, channels: [...config.channels, ch.id] })}
+                  className="w-full text-left px-3 py-1.5 text-xs text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+                >
+                  #{ch.name} <span className="text-cc-muted">({ch.id})</span>
+                </button>
+              ))}
+          </div>
+        )}
+        <input
+          type="text"
+          value={channelInput}
+          onChange={(e) => setChannelInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              const val = channelInput.trim();
+              if (val && !config.channels.includes(val)) {
+                onChange({ ...config, channels: [...config.channels, val] });
+              }
+              setChannelInput("");
+            }
+          }}
+          className="w-full px-3 py-1.5 text-sm rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg focus:outline-none focus:border-cc-primary/50"
+          placeholder={showPicker ? "Filter or type channel ID" : "Channel ID (e.g. C01ABCDEF)"}
+        />
+        {config.channels.length > 0 && (
+          <div className="flex gap-1 mt-1.5 flex-wrap">
+            {config.channels.map((ch) => (
+              <span key={ch} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-cc-primary/10 text-cc-primary">
+                {getChannelName(ch)}
+                <button onClick={() => onChange({ ...config, channels: config.channels.filter((c) => c !== ch) })} className="hover:text-cc-error cursor-pointer">x</button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
       <label className="block">
-        <span className="text-xs font-medium text-cc-fg">Channel IDs</span>
-        <p className="text-[10px] text-cc-muted mb-1">Comma-separated Slack channel IDs (e.g. C01ABCDEF)</p>
-        <input type="text" value={config.channels.join(", ")} onChange={(e) => onChange({ ...config, channels: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} className="w-full px-3 py-1.5 mt-1 text-sm rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg focus:outline-none focus:border-cc-primary/50" placeholder="C01ABCDEF, C02GHIJKL" />
-      </label>
-      <label className="block">
-        <span className="text-xs font-medium text-cc-fg">Trigger Keywords</span>
-        <TagInput tags={config.triggerKeywords} onChange={(triggerKeywords) => onChange({ ...config, triggerKeywords })} placeholder="Add keyword (empty = all messages)" />
+        <span className="text-xs font-medium text-cc-fg">Trigger Keywords (empty = all messages)</span>
+        <p className="text-[10px] text-cc-muted mb-1">Only trigger on messages containing these keywords</p>
+        <TagInput tags={config.triggerKeywords} onChange={(triggerKeywords) => onChange({ ...config, triggerKeywords })} placeholder="@agent, help, urgent" />
       </label>
       <label className="flex items-center gap-2">
         <input type="checkbox" checked={config.ignoreBots} onChange={(e) => onChange({ ...config, ignoreBots: e.target.checked })} className="rounded" />

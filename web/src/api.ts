@@ -233,4 +233,10 @@ export const api = {
 
   testOllama: (url: string, model?: string) =>
     post<{ ok: boolean; error?: string }>("/ollama/test", { url, model }),
+
+  testSlack: (token?: string) =>
+    post<{ ok: boolean; error?: string; team?: string; user?: string }>("/slack/test", { token }),
+
+  getSlackChannels: () =>
+    get<{ channels: Array<{ id: string; name: string }> }>("/slack/channels"),
 };
