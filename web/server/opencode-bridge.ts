@@ -461,11 +461,6 @@ export class OpenCodeBridge {
         const msgId = part?.messageID as string | undefined;
         if (msgId && this.messageRoles.get(msgId) === "user") break;
 
-        // Debug: log part structure to understand what OpenCode sends
-        if (part?.type === "text") {
-          console.log(`[opencode] text part: delta=${delta !== undefined}, delta_len=${delta?.length}, text_len=${(part.text as string)?.length}, keys=${Object.keys(props).join(",")}`);
-        }
-
         if (part?.type === "text" && delta) {
           // Streaming text — send as stream_event (only when there's a delta, not full-text updates)
           this.wsBridge.injectToBrowsers(sessionId, {

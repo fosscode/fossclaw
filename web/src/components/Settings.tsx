@@ -1,6 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useStore } from "../store";
 import { api } from "../api";
+
+/** Flash a brief "Saved" indicator on blur, auto-fades */
+function useSaveFlash() {
+  const [show, setShow] = useState(false);
+  const flash = useCallback(() => {
+    setShow(true);
+    const t = setTimeout(() => setShow(false), 1500);
+    return () => clearTimeout(t);
+  }, []);
+  const indicator = show ? (
+    <span className="text-xs text-green-600 dark:text-green-400 ml-2 animate-pulse">Saved</span>
+  ) : null;
+  return { flash, indicator };
+}
 
 export function Settings({ onClose }: { onClose: () => void }) {
   const darkMode = useStore((s) => s.darkMode);
@@ -44,6 +58,13 @@ export function Settings({ onClose }: { onClose: () => void }) {
   const [slackTestStatus, setSlackTestStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
   const [slackTestError, setSlackTestError] = useState<string>("");
   const [slackTestInfo, setSlackTestInfo] = useState<string>("");
+  const appUrlSave = useSaveFlash();
+  const webhookSave = useSaveFlash();
+  const ollamaUrlSave = useSaveFlash();
+  const ollamaModelSave = useSaveFlash();
+  const linearKeySave = useSaveFlash();
+  const githubTokenSave = useSaveFlash();
+  const slackTokenSave = useSaveFlash();
 
   const [updateStatus, setUpdateStatus] = useState<{
     checking: boolean;
@@ -157,7 +178,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
                 </label>
                 <div className="space-y-1">
                   <label className="block text-gray-700 dark:text-gray-300 text-sm">
-                    App URL
+                    App URL{appUrlSave.indicator}
                   </label>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     Base URL of this FossClaw instance. When set, webhook notifications include a link to the session.
@@ -166,14 +187,14 @@ export function Settings({ onClose }: { onClose: () => void }) {
                     type="url"
                     value={appUrlInput}
                     onChange={(e) => setAppUrlInput(e.target.value)}
-                    onBlur={() => setAppUrl(appUrlInput)}
+                    onBlur={() => { setAppUrl(appUrlInput); appUrlSave.flash(); }}
                     placeholder="https://fossclaw.example.com"
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="block text-gray-700 dark:text-gray-300 text-sm">
-                    Webhook URL
+                    Webhook URL{webhookSave.indicator}
                   </label>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     POST request sent when a session is waiting for input. Compatible with Slack and Discord incoming webhooks.
@@ -182,7 +203,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
                     type="url"
                     value={webhookInput}
                     onChange={(e) => { setWebhookInput(e.target.value); setTestStatus("idle"); }}
-                    onBlur={() => setWebhookUrl(webhookInput)}
+                    onBlur={() => { setWebhookUrl(webhookInput); webhookSave.flash(); }}
                     placeholder="https://hooks.slack.com/... or https://discord.com/api/webhooks/..."
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
                   />
@@ -225,26 +246,26 @@ export function Settings({ onClose }: { onClose: () => void }) {
                 </p>
                 <div className="space-y-1">
                   <label className="block text-gray-700 dark:text-gray-300 text-sm">
-                    Ollama URL
+                    Ollama URL{ollamaUrlSave.indicator}
                   </label>
                   <input
                     type="url"
                     value={ollamaUrlInput}
                     onChange={(e) => { setOllamaUrlInput(e.target.value); setOllamaTestStatus("idle"); }}
-                    onBlur={() => setOllamaUrl(ollamaUrlInput)}
+                    onBlur={() => { setOllamaUrl(ollamaUrlInput); ollamaUrlSave.flash(); }}
                     placeholder="http://localhost:11434"
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="block text-gray-700 dark:text-gray-300 text-sm">
-                    Ollama Model
+                    Ollama Model{ollamaModelSave.indicator}
                   </label>
                   <input
                     type="text"
                     value={ollamaModelInput}
                     onChange={(e) => { setOllamaModelInput(e.target.value); setOllamaTestStatus("idle"); }}
-                    onBlur={() => setOllamaModel(ollamaModelInput)}
+                    onBlur={() => { setOllamaModel(ollamaModelInput); ollamaModelSave.flash(); }}
                     placeholder="llama3.2:3b"
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
                   />
@@ -290,7 +311,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
               <div className="space-y-3">
                 <div className="space-y-1">
                   <label className="block text-gray-700 dark:text-gray-300 text-sm">
-                    Linear API Key
+                    Linear API Key{linearKeySave.indicator}
                   </label>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     Used for Linear cron jobs and the issue picker. Overrides the <code className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">LINEAR_API_KEY</code> environment variable.
@@ -299,14 +320,14 @@ export function Settings({ onClose }: { onClose: () => void }) {
                     type="password"
                     value={linearApiKeyInput}
                     onChange={(e) => setLinearApiKeyInput(e.target.value)}
-                    onBlur={() => setLinearApiKey(linearApiKeyInput)}
+                    onBlur={() => { setLinearApiKey(linearApiKeyInput); linearKeySave.flash(); }}
                     placeholder="lin_api_..."
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="block text-gray-700 dark:text-gray-300 text-sm">
-                    GitHub Token
+                    GitHub Token{githubTokenSave.indicator}
                   </label>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     Used for cron PR reviews and CI monitoring. Overrides the <code className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">GITHUB_TOKEN</code> environment variable.
@@ -315,14 +336,14 @@ export function Settings({ onClose }: { onClose: () => void }) {
                     type="password"
                     value={githubTokenInput}
                     onChange={(e) => setGitHubTokenInput(e.target.value)}
-                    onBlur={() => setGitHubToken(githubTokenInput)}
+                    onBlur={() => { setGitHubToken(githubTokenInput); githubTokenSave.flash(); }}
                     placeholder="ghp_..."
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="block text-gray-700 dark:text-gray-300 text-sm">
-                    Slack Bot Token
+                    Slack Bot Token{slackTokenSave.indicator}
                   </label>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     Used for Slack channel cron jobs. Requires <code className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">channels:history</code> and <code className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">channels:read</code> scopes. Overrides the <code className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">SLACK_BOT_TOKEN</code> environment variable.
@@ -331,7 +352,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
                     type="password"
                     value={slackBotTokenInput}
                     onChange={(e) => { setSlackBotTokenInput(e.target.value); setSlackTestStatus("idle"); }}
-                    onBlur={() => setSlackBotToken(slackBotTokenInput)}
+                    onBlur={() => { setSlackBotToken(slackBotTokenInput); slackTokenSave.flash(); }}
                     placeholder="xoxb-..."
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
                   />

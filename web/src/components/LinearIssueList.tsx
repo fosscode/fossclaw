@@ -22,6 +22,7 @@ export function LinearIssueList() {
   const [assigneeFilter, setAssigneeFilter] = useState("");
   const [ageFilter, setAgeFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [filterError, setFilterError] = useState<string | null>(null);
 
   // Filter option data
   const [teams, setTeams] = useState<{ id: string; key: string; name: string }[]>([]);
@@ -40,7 +41,9 @@ export function LinearIssueList() {
 
   // Load teams on mount
   useEffect(() => {
-    api.listLinearTeams().then((r) => setTeams(r.teams)).catch(() => {});
+    api.listLinearTeams()
+      .then((r) => { setTeams(r.teams); setFilterError(null); })
+      .catch(() => setFilterError("Failed to load teams — check your Linear API key in Settings"));
   }, []);
 
   // Load team-specific filter options when team changes
@@ -52,10 +55,13 @@ export function LinearIssueList() {
       setMembers([]);
       return;
     }
-    api.listLinearStates(teamFilter).then((r) => setStates(r.states)).catch(() => setStates([]));
-    api.listLinearCycles(teamFilter).then((r) => setCycles(r.cycles)).catch(() => setCycles([]));
-    api.listLinearLabels(teamFilter).then((r) => setLabels(r.labels)).catch(() => setLabels([]));
-    api.listLinearMembers(teamFilter).then((r) => setMembers(r.members)).catch(() => setMembers([]));
+    setFilterError(null);
+    Promise.all([
+      api.listLinearStates(teamFilter).then((r) => setStates(r.states)),
+      api.listLinearCycles(teamFilter).then((r) => setCycles(r.cycles)),
+      api.listLinearLabels(teamFilter).then((r) => setLabels(r.labels)),
+      api.listLinearMembers(teamFilter).then((r) => setMembers(r.members)),
+    ]).catch(() => setFilterError("Failed to load filter options"));
   }, [teamFilter]);
 
   // Load issues with debounce
@@ -380,6 +386,11 @@ export function LinearIssueList() {
             />
           )}
         </div>
+      )}
+
+      {/* Filter loading error */}
+      {filterError && (
+        <div className="px-2 py-2 text-xs text-cc-error bg-cc-error/10 rounded-lg">{filterError}</div>
       )}
 
       {/* Issue list */}

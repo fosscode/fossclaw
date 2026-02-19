@@ -92,6 +92,7 @@ export function HomePage() {
   const [showResumeDropdown, setShowResumeDropdown] = useState(false);
   const [claudeSessions, setClaudeSessions] = useState<Array<{ sessionId: string; cwd: string; lastModified: number }>>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
@@ -241,11 +242,13 @@ export function HomePage() {
 
   const loadClaudeSessions = useCallback(async () => {
     setSessionsLoading(true);
+    setSessionsError(null);
     try {
       const result = await api.listClaudeSessions();
       setClaudeSessions(result.sessions);
     } catch {
       setClaudeSessions([]);
+      setSessionsError("Failed to load sessions");
     } finally {
       setSessionsLoading(false);
     }
@@ -451,6 +454,8 @@ export function HomePage() {
                 <div className="flex-1 min-h-0 overflow-y-auto">
                   {sessionsLoading ? (
                     <div className="px-3 py-8 text-xs text-cc-muted text-center">Loading sessions...</div>
+                  ) : sessionsError ? (
+                    <div className="px-3 py-8 text-xs text-cc-error text-center">{sessionsError}</div>
                   ) : claudeSessions.length === 0 ? (
                     <div className="px-3 py-8 text-xs text-cc-muted text-center">No saved sessions found</div>
                   ) : (

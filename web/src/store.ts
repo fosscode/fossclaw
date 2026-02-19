@@ -210,7 +210,16 @@ function getInitialColorTheme(): "aurora" | "ocean" | "sunset" | "forest" | "lav
   return "aurora";
 }
 
-export const useStore = create<AppState>((set) => ({
+/** Sync a preference to the server, toast on failure */
+function syncPref(get: () => AppState, prefs: Record<string, unknown>) {
+  import("./api.js").then(({ api }) =>
+    api.updatePreferences(prefs).catch(() => {
+      get().addToast("Failed to save setting to server", "error");
+    })
+  );
+}
+
+export const useStore = create<AppState>((set, get) => ({
   sessions: new Map(),
   sdkSessions: [],
   currentSessionId: null,
@@ -300,19 +309,19 @@ export const useStore = create<AppState>((set) => ({
   setDarkMode: (v) => {
     localStorage.setItem("cc-dark-mode", String(v));
     set({ darkMode: v });
-    import("./api.js").then(({ api }) => api.updatePreferences({ darkMode: v }).catch(() => {}));
+    syncPref(get, { darkMode: v });
   },
   toggleDarkMode: () =>
     set((s) => {
       const next = !s.darkMode;
       localStorage.setItem("cc-dark-mode", String(next));
-      import("./api.js").then(({ api }) => api.updatePreferences({ darkMode: next }).catch(() => {}));
+      syncPref(get, { darkMode: next });
       return { darkMode: next };
     }),
   setColorTheme: (theme) => {
     localStorage.setItem("cc-color-theme", theme);
     set({ colorTheme: theme });
-    import("./api.js").then(({ api }) => api.updatePreferences({ colorTheme: theme }).catch(() => {}));
+    syncPref(get, { colorTheme: theme });
   },
   setSidebarOpen: (v) => set({ sidebarOpen: v }),
   setSidebarWidth: (w) => {
@@ -322,7 +331,7 @@ export const useStore = create<AppState>((set) => ({
     // Debounce server sync (resize fires on every mouse move)
     clearTimeout((globalThis as any).__sidebarWidthTimer);
     (globalThis as any).__sidebarWidthTimer = setTimeout(() => {
-      import("./api.js").then(({ api }) => api.updatePreferences({ sidebarWidth: clamped }).catch(() => {}));
+      syncPref(get, { sidebarWidth: clamped });
     }, 500);
   },
   setTaskPanelOpen: (open) => set({ taskPanelOpen: open }),
@@ -331,35 +340,35 @@ export const useStore = create<AppState>((set) => ({
   setShowSettings: (open) => set({ showSettings: open }),
   setNotificationsEnabled: (enabled) => {
     set({ notificationsEnabled: enabled });
-    import("./api.js").then(({ api }) => api.updatePreferences({ notificationsEnabled: enabled }).catch(() => {}));
+    syncPref(get, { notificationsEnabled: enabled });
   },
   setWebhookUrl: (url) => {
     set({ webhookUrl: url });
-    import("./api.js").then(({ api }) => api.updatePreferences({ webhookUrl: url }).catch(() => {}));
+    syncPref(get, { webhookUrl: url });
   },
   setAppUrl: (url) => {
     set({ appUrl: url });
-    import("./api.js").then(({ api }) => api.updatePreferences({ appUrl: url }).catch(() => {}));
+    syncPref(get, { appUrl: url });
   },
   setOllamaUrl: (url) => {
     set({ ollamaUrl: url });
-    import("./api.js").then(({ api }) => api.updatePreferences({ ollamaUrl: url }).catch(() => {}));
+    syncPref(get, { ollamaUrl: url });
   },
   setOllamaModel: (model) => {
     set({ ollamaModel: model });
-    import("./api.js").then(({ api }) => api.updatePreferences({ ollamaModel: model }).catch(() => {}));
+    syncPref(get, { ollamaModel: model });
   },
   setLinearApiKey: (key) => {
     set({ linearApiKey: key });
-    import("./api.js").then(({ api }) => api.updatePreferences({ linearApiKey: key }).catch(() => {}));
+    syncPref(get, { linearApiKey: key });
   },
   setGitHubToken: (token) => {
     set({ githubToken: token });
-    import("./api.js").then(({ api }) => api.updatePreferences({ githubToken: token }).catch(() => {}));
+    syncPref(get, { githubToken: token });
   },
   setSlackBotToken: (token) => {
     set({ slackBotToken: token });
-    import("./api.js").then(({ api }) => api.updatePreferences({ slackBotToken: token }).catch(() => {}));
+    syncPref(get, { slackBotToken: token });
   },
   setCoderMode: (enabled) => set({ coderMode: enabled }),
   toggleCoderMode: () => set((s) => ({ coderMode: !s.coderMode })),
@@ -439,7 +448,7 @@ export const useStore = create<AppState>((set) => ({
       dirs.unshift(dir);
       const trimmed = dirs.slice(0, 5);
       localStorage.setItem("cc-recent-dirs", JSON.stringify(trimmed));
-      import("./api.js").then(({ api }) => api.updatePreferences({ recentDirs: trimmed }).catch(() => {}));
+      syncPref(get, { recentDirs: trimmed });
       return { recentDirs: trimmed };
     });
   },
@@ -450,7 +459,7 @@ export const useStore = create<AppState>((set) => ({
       defaultModels.set(provider, model);
       const obj = Object.fromEntries(defaultModels);
       localStorage.setItem("cc-default-models", JSON.stringify(obj));
-      import("./api.js").then(({ api }) => api.updatePreferences({ defaultModels: obj }).catch(() => {}));
+      syncPref(get, { defaultModels: obj });
       return { defaultModels };
     });
   },
@@ -467,21 +476,21 @@ export const useStore = create<AppState>((set) => ({
     set((s) => {
       const playbooks = [...s.playbooks, playbook];
       localStorage.setItem("cc-playbooks", JSON.stringify(playbooks));
-      import("./api.js").then(({ api }) => api.updatePreferences({ playbooks }).catch(() => {}));
+      syncPref(get, { playbooks });
       return { playbooks };
     }),
   updatePlaybook: (id, updates) =>
     set((s) => {
       const playbooks = s.playbooks.map((pb) => (pb.id === id ? { ...pb, ...updates } : pb));
       localStorage.setItem("cc-playbooks", JSON.stringify(playbooks));
-      import("./api.js").then(({ api }) => api.updatePreferences({ playbooks }).catch(() => {}));
+      syncPref(get, { playbooks });
       return { playbooks };
     }),
   deletePlaybook: (id) =>
     set((s) => {
       const playbooks = s.playbooks.filter((pb) => pb.id !== id);
       localStorage.setItem("cc-playbooks", JSON.stringify(playbooks));
-      import("./api.js").then(({ api }) => api.updatePreferences({ playbooks }).catch(() => {}));
+      syncPref(get, { playbooks });
       return { playbooks };
     }),
 
