@@ -253,7 +253,7 @@ export const useStore = create<AppState>((set) => ({
   linearApiKey: "",
   homeResetKey: 0,
   homeProvider: "claude",
-  coderMode: false,
+  coderMode: true,
   recentDirs: (() => {
     if (typeof window === "undefined") return [];
     try { return JSON.parse(localStorage.getItem("cc-recent-dirs") || "[]"); }
