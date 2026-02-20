@@ -1,6 +1,6 @@
 {
   "name": "fossclaw",
-  "version": "2.19.8",
+  "version": "2.19.9",
   "type": "module",
   "description": "Web UI for launching and interacting with Claude Code agents",
   "license": "MIT",
@@ -34,8 +34,8 @@
     "test": "bun test"
   },
   "dependencies": {
-    "hono": "^4.7.0",
-    "highlight.js": "^11.10.0"
+    "highlight.js": "^11.10.0",
+    "hono": "^4.7.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
