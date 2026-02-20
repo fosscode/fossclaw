@@ -48,7 +48,7 @@ async function patch<T = unknown>(path: string, body?: object): Promise<T> {
 export interface CreateSessionOpts {
   model?: string;
   permissionMode?: string;
-  provider?: "claude" | "opencode";
+  provider?: "claude" | "opencode" | "codex";
   providerID?: string;
   cwd?: string;
   claudeBinary?: string;
@@ -113,6 +113,10 @@ export const api = {
   // OpenCode
   listOpenCodeModels: () =>
     get<{ models: OpenCodeModel[] }>("/opencode/models"),
+
+  // Codex
+  listCodexModels: () =>
+    get<{ models: Array<{ id: string; name: string }> }>("/codex/models"),
 
   getSessionContext: (sessionId: string) =>
     get<{ tokens?: { used: number; max: number }; error?: string }>(`/sessions/${encodeURIComponent(sessionId)}/context`),

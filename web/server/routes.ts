@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import type { CliLauncher } from "./cli-launcher.js";
 import type { WsBridge } from "./ws-bridge.js";
 import type { OpenCodeBridge } from "./opencode-bridge.js";
+import type { CodexBridge } from "./codex-bridge.js";
 import type { SessionStore } from "./session-store.js";
 import type { UserPreferencesStore } from "./user-preferences.js";
 import type { CronJobStore } from "./cron-store.js";
@@ -18,7 +19,7 @@ import { UpdateChecker } from "./update-checker.js";
 import { OllamaClient } from "./ollama-client.js";
 import { readFileSync } from "node:fs";
 
-export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultCwd?: string, opencodeBridge?: OpenCodeBridge, store?: SessionStore, prefsStore?: UserPreferencesStore, cronStore?: CronJobStore, cronScheduler?: CronScheduler) {
+export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultCwd?: string, opencodeBridge?: OpenCodeBridge, codexBridge?: CodexBridge, store?: SessionStore, prefsStore?: UserPreferencesStore, cronStore?: CronJobStore, cronScheduler?: CronScheduler) {
   const api = new Hono();
 
   // Read version from package.json
@@ -440,6 +441,21 @@ export function createRoutes(launcher: CliLauncher, wsBridge: WsBridge, defaultC
 
     // Not an OpenCode session
     return c.json({ error: "Context only available for OpenCode sessions" }, 501);
+  });
+
+  // ─── Codex integration ─────────────────────────────────────
+
+  api.get("/codex/models", async (c) => {
+    if (!codexBridge) {
+      return c.json({ error: "Codex not configured" }, 501);
+    }
+    try {
+      const models = await codexBridge.listModels();
+      return c.json({ models });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return c.json({ error: msg }, 500);
+    }
   });
 
   // ─── Linear integration ─────────────────────────────────────

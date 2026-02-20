@@ -10,6 +10,7 @@ import { createRoutes } from "./routes.js";
 import { CliLauncher } from "./cli-launcher.js";
 import { WsBridge } from "./ws-bridge.js";
 import { OpenCodeBridge } from "./opencode-bridge.js";
+import { CodexBridge } from "./codex-bridge.js";
 import { FileSessionStore } from "./session-store.js";
 import { UserPreferencesStore } from "./user-preferences.js";
 import { OllamaClient } from "./ollama-client.js";
@@ -96,6 +97,12 @@ const opencodeBridge = new OpenCodeBridge(opencodePort);
 opencodeBridge.setWsBridge(wsBridge);
 launcher.setOpenCodeBridge(opencodeBridge);
 
+// Codex bridge — uses a dedicated port for the codex serve process
+const codexPort = Number(process.env.CODEX_PORT) || (port + 200);
+const codexBridge = new CodexBridge(codexPort);
+codexBridge.setWsBridge(wsBridge);
+launcher.setCodexBridge(codexBridge);
+
 // Cron job scheduler
 const cronStore = new CronJobStore();
 const cronScheduler = new CronScheduler(cronStore, launcher, wsBridge, store);
@@ -111,7 +118,7 @@ if (restoredAuthSessions > 0) {
 const app = new Hono();
 
 app.use("/api/*", cors());
-app.route("/api", createRoutes(launcher, wsBridge, defaultCwd, opencodeBridge, store, prefsStore, cronStore, cronScheduler));
+app.route("/api", createRoutes(launcher, wsBridge, defaultCwd, opencodeBridge, codexBridge, store, prefsStore, cronStore, cronScheduler));
 
 // Serve built frontend unless explicitly in dev mode (Vite handles it there)
 if (process.env.NODE_ENV !== "development") {

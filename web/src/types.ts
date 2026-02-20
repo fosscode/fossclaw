@@ -38,7 +38,7 @@ export interface SdkSessionInfo {
   exitCode?: number | null;
   model?: string;
   permissionMode?: string;
-  provider?: "claude" | "opencode";
+  provider?: "claude" | "opencode" | "codex";
   cwd: string;
   createdAt: number;
   sessionName?: string;

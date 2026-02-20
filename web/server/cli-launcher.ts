@@ -4,6 +4,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Subprocess } from "bun";
 import type { OpenCodeBridge } from "./opencode-bridge.js";
+import type { CodexBridge } from "./codex-bridge.js";
 import type { SessionStore } from "./session-store.js";
 
 export interface SdkSessionInfo {
@@ -13,7 +14,7 @@ export interface SdkSessionInfo {
   exitCode?: number | null;
   model?: string;
   permissionMode?: string;
-  provider?: "claude" | "opencode";
+  provider?: "claude" | "opencode" | "codex";
   cwd: string;
   createdAt: number;
   sessionName?: string;
@@ -24,7 +25,7 @@ export interface SdkSessionInfo {
 export interface LaunchOptions {
   model?: string;
   permissionMode?: string;
-  provider?: "claude" | "opencode";
+  provider?: "claude" | "opencode" | "codex";
   providerID?: string; // OpenCode provider ID (e.g., "anthropic", "google")
   cwd?: string;
   claudeBinary?: string;
@@ -43,6 +44,7 @@ export class CliLauncher {
   private port: number;
   private defaultCwd: string;
   private opencodeBridge: OpenCodeBridge | null = null;
+  private codexBridge: CodexBridge | null = null;
   private store: SessionStore | null;
   private useHttps: boolean;
 
@@ -57,6 +59,10 @@ export class CliLauncher {
     this.opencodeBridge = bridge;
   }
 
+  setCodexBridge(bridge: CodexBridge) {
+    this.codexBridge = bridge;
+  }
+
   /**
    * Launch a new Claude Code CLI session.
    * The CLI will connect back to ws://localhost:{port}/ws/cli/{sessionId}
@@ -64,6 +70,33 @@ export class CliLauncher {
   launch(options: LaunchOptions = {}): SdkSessionInfo {
     const sessionId = randomUUID();
     const cwd = options.cwd || this.defaultCwd;
+
+    // Codex sessions — delegate to the Codex bridge
+    if (options.provider === "codex" && this.codexBridge) {
+      const info: SdkSessionInfo = {
+        sessionId,
+        state: "starting",
+        model: options.model,
+        provider: "codex",
+        cwd,
+        createdAt: Date.now(),
+      };
+      this.sessions.set(sessionId, info);
+      this.persistMeta(info);
+
+      this.codexBridge.createSession(sessionId, cwd, options.model)
+        .then(() => {
+          info.state = "connected";
+          console.log(`[cli-launcher] Codex session ${sessionId} ready`);
+        })
+        .catch((err) => {
+          console.error(`[cli-launcher] Codex session ${sessionId} failed:`, err);
+          info.state = "exited";
+          info.exitCode = -1;
+        });
+
+      return info;
+    }
 
     // OpenCode sessions — delegate to the bridge
     if (options.provider === "opencode" && this.opencodeBridge) {

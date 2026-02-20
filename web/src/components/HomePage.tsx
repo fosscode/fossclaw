@@ -65,11 +65,14 @@ export function HomePage() {
   const setDefaultModel = useStore((s) => s.setDefaultModel);
   const homeProvider = useStore((s) => s.homeProvider);
   const [text, setText] = useState(prefilledText || "");
-  const [provider, setProvider] = useState<"claude" | "opencode">(homeProvider);
+  const [provider, setProvider] = useState<"claude" | "opencode" | "codex">(homeProvider);
   const [model, setModel] = useState(defaultModels.get("claude") || MODELS[0].value);
   const [ocModel, setOcModel] = useState(defaultModels.get("opencode") || "");
   const [ocModels, setOcModels] = useState<OpenCodeModel[]>([]);
   const [ocModelsLoading, setOcModelsLoading] = useState(false);
+  const [codexModel, setCodexModel] = useState(defaultModels.get("codex") || "");
+  const [codexModels, setCodexModels] = useState<Array<{ id: string; name: string }>>([]);
+  const [codexModelsLoading, setCodexModelsLoading] = useState(false);
   const [mode, setMode] = useState(MODES[0].value);
   const [cwd, setCwd] = useState(() => recentDirs[0] || "");
   const [images, setImages] = useState<ImageAttachment[]>([]);
@@ -176,6 +179,26 @@ export function HomePage() {
       .finally(() => setOcModelsLoading(false));
   }, [provider, ocModel, defaultModels]);
 
+  // Load Codex models when provider changes
+  useEffect(() => {
+    if (provider !== "codex") return;
+    if (codexModels.length > 0) return; // already loaded
+    setCodexModelsLoading(true);
+    api.listCodexModels()
+      .then((r) => {
+        setCodexModels(r.models);
+        const defaultCodexModel = defaultModels.get("codex");
+        const defaultExists = r.models.some((m) => m.id === defaultCodexModel);
+        if (defaultExists && defaultCodexModel) {
+          setCodexModel(defaultCodexModel);
+        } else if (r.models.length > 0 && !codexModel) {
+          setCodexModel(r.models[0].id);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setCodexModelsLoading(false));
+  }, [provider]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Update model when provider changes and default exists
   useEffect(() => {
     if (provider === "claude") {
@@ -188,8 +211,13 @@ export function HomePage() {
       if (defaultOcModel && ocModels.some((m) => m.id === defaultOcModel)) {
         setOcModel(defaultOcModel);
       }
+    } else if (provider === "codex") {
+      const defaultCodexModel = defaultModels.get("codex");
+      if (defaultCodexModel && codexModels.some((m) => m.id === defaultCodexModel)) {
+        setCodexModel(defaultCodexModel);
+      }
     }
-  }, [provider, defaultModels, ocModels]);
+  }, [provider, defaultModels, ocModels, codexModels]);
 
   // Load server home/cwd on mount
   useEffect(() => {
@@ -360,7 +388,7 @@ export function HomePage() {
       // Create session
       const selectedOcModel = ocModels.find((m) => m.id === ocModel);
       const result = await api.createSession({
-        model: provider === "opencode" ? ocModel : model,
+        model: provider === "opencode" ? ocModel : provider === "codex" ? codexModel : model,
         permissionMode: provider === "claude" ? mode : undefined,
         provider,
         providerID: provider === "opencode" ? selectedOcModel?.providerID : undefined,
@@ -631,8 +659,8 @@ export function HomePage() {
               onClick={() => setShowProviderDropdown(!showProviderDropdown)}
               className="flex items-center gap-1.5 px-2 py-1 text-xs text-cc-muted hover:text-cc-fg rounded-md hover:bg-cc-hover transition-colors cursor-pointer"
             >
-              <span>{provider === "claude" ? "\u2726" : "\u25C8"}</span>
-              <span>{provider === "claude" ? "Claude" : "OpenCode"}</span>
+              <span>{provider === "claude" ? "\u2726" : provider === "codex" ? "\u25B6" : "\u25C8"}</span>
+              <span>{provider === "claude" ? "Claude" : provider === "codex" ? "Codex" : "OpenCode"}</span>
               <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50">
                 <path d="M4 6l4 4 4-4" />
               </svg>
@@ -654,6 +682,14 @@ export function HomePage() {
                   }`}
                 >
                   <span>{"\u25C8"}</span> OpenCode
+                </button>
+                <button
+                  onClick={() => { setProvider("codex"); setShowProviderDropdown(false); }}
+                  className={`w-full px-3 py-2 text-xs text-left hover:bg-cc-hover transition-colors cursor-pointer flex items-center gap-2 ${
+                    provider === "codex" ? "text-cc-primary font-medium" : "text-cc-fg"
+                  }`}
+                >
+                  <span>{"\u25B6"}</span> Codex
                 </button>
               </div>
             )}
@@ -801,6 +837,11 @@ export function HomePage() {
                   <span>{selectedModel.icon}</span>
                   <span>{selectedModel.label}</span>
                 </>
+              ) : provider === "codex" ? (
+                <>
+                  <span>{"\u25B6"}</span>
+                  <span className="max-w-[150px] truncate">{codexModelsLoading ? "Loading..." : (codexModels.find((m) => m.id === codexModel)?.name || codexModel || "Select model")}</span>
+                </>
               ) : (
                 <>
                   <span>{"\u25C8"}</span>
@@ -839,6 +880,52 @@ export function HomePage() {
                     </div>
                   }
                 />
+              ) : provider === "codex" ? (
+                codexModelsLoading ? (
+                  <div className="absolute left-0 top-full mt-1 w-[280px] bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-10 py-1">
+                    <div className="px-3 py-3 text-xs text-cc-muted text-center">Loading models...</div>
+                  </div>
+                ) : codexModels.length === 0 ? (
+                  <div className="absolute left-0 top-full mt-1 w-[280px] bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-10 py-1">
+                    <div className="px-3 py-3 text-xs text-cc-muted text-center">No models available</div>
+                    <div className="px-3 py-2">
+                      <input
+                        type="text"
+                        value={codexModel}
+                        onChange={(e) => setCodexModel(e.target.value)}
+                        placeholder="Enter model ID manually"
+                        className="w-full px-2 py-1 text-xs bg-cc-input-bg border border-cc-border rounded text-cc-fg placeholder:text-cc-muted focus:outline-none focus:border-cc-primary/50"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <SearchableDropdown
+                    options={codexModels.map((m) => ({ value: m.id, label: m.name, icon: "\u25B6" }))}
+                    value={codexModel}
+                    onChange={setCodexModel}
+                    onClose={() => setShowModelDropdown(false)}
+                    placeholder="Search models..."
+                    width="280px"
+                    footer={
+                      <div className="px-3 py-2 flex items-center justify-between">
+                        <span className="text-[10px] text-cc-muted">
+                          {defaultModels.get("codex") === codexModel ? "✓ Default" : ""}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDefaultModel("codex", codexModel);
+                            setShowModelDropdown(false);
+                          }}
+                          className="text-xs text-cc-primary hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-default disabled:no-underline"
+                          disabled={defaultModels.get("codex") === codexModel}
+                        >
+                          {defaultModels.get("codex") === codexModel ? "Saved" : "Save as default"}
+                        </button>
+                      </div>
+                    }
+                  />
+                )
               ) : ocModelsLoading ? (
                 <div className="absolute left-0 top-full mt-1 w-[280px] bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-10 py-1">
                   <div className="px-3 py-3 text-xs text-cc-muted text-center">Loading models...</div>

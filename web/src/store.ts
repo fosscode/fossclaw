@@ -77,10 +77,10 @@ interface AppState {
   githubToken: string;
   slackBotToken: string;
   homeResetKey: number;
-  homeProvider: "claude" | "opencode";
+  homeProvider: "claude" | "opencode" | "codex";
   coderMode: boolean;
   recentDirs: string[];
-  defaultModels: Map<"claude" | "opencode", string>;
+  defaultModels: Map<"claude" | "opencode" | "codex", string>;
 
   // Toasts
   toasts: Toast[];
@@ -109,7 +109,7 @@ interface AppState {
   setSlackBotToken: (token: string) => void;
   setCoderMode: (enabled: boolean) => void;
   toggleCoderMode: () => void;
-  newSession: (provider?: "claude" | "opencode") => void;
+  newSession: (provider?: "claude" | "opencode" | "codex") => void;
 
   // Linear actions
   setSidebarTab: (tab: "sessions" | "linear") => void;
@@ -139,7 +139,7 @@ interface AppState {
   // Preferences
   loadPreferences: () => Promise<void>;
   addRecentDir: (dir: string) => void;
-  setDefaultModel: (provider: "claude" | "opencode", model: string) => void;
+  setDefaultModel: (provider: "claude" | "opencode" | "codex", model: string) => void;
 
   // Session actions
   setCurrentSession: (id: string | null) => void;
@@ -372,11 +372,11 @@ export const useStore = create<AppState>((set, get) => ({
   },
   setCoderMode: (enabled) => set({ coderMode: enabled }),
   toggleCoderMode: () => set((s) => ({ coderMode: !s.coderMode })),
-  newSession: (provider?: "claude" | "opencode") => set((s) => ({ 
-    currentSessionId: null, 
+  newSession: (provider?: "claude" | "opencode" | "codex") => set((s) => ({
+    currentSessionId: null,
     homeResetKey: s.homeResetKey + 1,
     homeProvider: provider ?? "claude",
-    coderMode: provider === "opencode" ? true : s.coderMode,
+    coderMode: (provider === "opencode" || provider === "codex") ? true : s.coderMode,
   })),
 
   // Load preferences from server (called on mount)

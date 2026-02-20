@@ -117,7 +117,7 @@ export function Sidebar() {
     }
   }
 
-  function handleNewSession(provider: "claude" | "opencode") {
+  function handleNewSession(provider: "claude" | "opencode" | "codex") {
     if (currentSessionId) {
       disconnectSession(currentSessionId);
     }
@@ -233,13 +233,13 @@ export function Sidebar() {
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="grid grid-cols-3 gap-1.5">
           <button
             onClick={() => handleNewSession("claude")}
             aria-label="Create new Claude session"
-            className="w-full py-2 px-3 text-sm font-medium rounded-[10px] bg-cc-primary hover:bg-cc-primary-hover text-white transition-colors duration-150 flex items-center justify-center gap-1.5 cursor-pointer"
+            className="py-1.5 px-2 text-xs font-medium rounded-[8px] bg-cc-primary hover:bg-cc-primary-hover text-white transition-colors duration-150 flex items-center justify-center gap-1 cursor-pointer"
           >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3 shrink-0">
               <path d="M8 3v10M3 8h10" />
             </svg>
             Claude
@@ -248,12 +248,23 @@ export function Sidebar() {
           <button
             onClick={() => handleNewSession("opencode")}
             aria-label="Create new OpenCode session"
-            className="w-full py-2 px-3 text-sm font-medium rounded-[10px] bg-cc-bg-secondary hover:bg-cc-border text-cc-text-primary transition-colors duration-150 flex items-center justify-center gap-1.5 cursor-pointer border border-cc-border"
+            className="py-1.5 px-2 text-xs font-medium rounded-[8px] bg-cc-bg-secondary hover:bg-cc-border text-cc-text-primary transition-colors duration-150 flex items-center justify-center gap-1 cursor-pointer border border-cc-border"
           >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3 shrink-0">
               <path d="M8 3v10M3 8h10" />
             </svg>
-            OpenCode
+            OC
+          </button>
+
+          <button
+            onClick={() => handleNewSession("codex")}
+            aria-label="Create new Codex session"
+            className="py-1.5 px-2 text-xs font-medium rounded-[8px] bg-cc-bg-secondary hover:bg-cc-border text-cc-text-primary transition-colors duration-150 flex items-center justify-center gap-1 cursor-pointer border border-cc-border"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3 shrink-0">
+              <path d="M8 3v10M3 8h10" />
+            </svg>
+            Codex
           </button>
         </div>
 
@@ -416,9 +427,11 @@ export function Sidebar() {
                           <span className={`text-[10px] font-medium px-1.5 py-0 rounded-full border ${
                             s.provider === "claude"
                               ? "border-cc-primary/30 text-cc-primary"
+                              : s.provider === "codex"
+                              ? "border-green-500/30 text-green-500"
                               : "border-cc-running/30 text-cc-running"
                           }`}>
-                            {s.provider === "claude" ? "Claude" : "OpenCode"}
+                            {s.provider === "claude" ? "Claude" : s.provider === "codex" ? "Codex" : "OpenCode"}
                           </span>
                         )}
                         {s.model && (

@@ -59,6 +59,7 @@ function createCronTestServer(): CronTestContext {
       bridge,
       "/tmp",
       undefined, // opencodeBridge
+      undefined, // codexBridge
       undefined, // store
       undefined, // prefsStore
       cronStore,
