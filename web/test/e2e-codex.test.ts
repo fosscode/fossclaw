@@ -385,7 +385,11 @@ describe("Codex E2E: message flow", () => {
     // Send a user message
     browser.send({ type: "user_message", content: "hello codex" });
 
-    // Should receive message_start stream event first
+    // Should receive status_change: "running" (so the Generating... indicator shows)
+    const statusMsg = await browser.waitForMessage("status_change", 3000);
+    expect((statusMsg as Record<string, unknown>).status).toBe("running");
+
+    // Should receive message_start stream event
     const msgStart = await browser.waitForMessage("stream_event", 3000);
     expect((msgStart.event as Record<string, unknown>)?.type).toBe("message_start");
 
@@ -396,7 +400,12 @@ describe("Codex E2E: message flow", () => {
     const delta = ev?.delta as Record<string, unknown>;
     expect(delta?.text).toBe("Hello from Codex!");
 
-    // Then a result message (turn/completed)
+    // Then a persistent assistant message (so text doesn't disappear when result clears streaming)
+    const assistantMsg = await browser.waitForMessage("assistant", 3000);
+    const content = (assistantMsg.message as Record<string, unknown>)?.content as Array<Record<string, unknown>>;
+    expect(content?.[0]?.text).toBe("Hello from Codex!");
+
+    // Then the result message (clears streaming state)
     const result = await browser.waitForMessage("result", 3000);
     expect(result.type).toBe("result");
 

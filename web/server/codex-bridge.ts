@@ -46,6 +46,8 @@ interface CodexSessionMapping {
   cwd: string;
   model?: string;
   currentTurnId?: string;
+  /** Accumulated text from item/agentMessage/delta for the current turn */
+  accumulatedText?: string;
 }
 
 type JsonRpcId = string | number;
@@ -468,6 +470,10 @@ export class CodexBridge {
         if (!fossclawId || !this.wsBridge) break;
         const delta = params.delta as string | undefined;
         if (delta) {
+          // Accumulate for the final assistant message injected on turn/completed
+          const mapping = this.sessions.get(fossclawId);
+          if (mapping) mapping.accumulatedText = (mapping.accumulatedText ?? "") + delta;
+
           this.wsBridge.injectToBrowsers(fossclawId, {
             type: "stream_event",
             event: {
@@ -492,6 +498,34 @@ export class CodexBridge {
 
       case "turn/completed": {
         if (!fossclawId || !this.wsBridge) break;
+
+        // Inject a proper assistant message so the reply persists after streaming clears.
+        // Without this, result's setStreaming(null) wipes the text with nothing to replace it.
+        const mapping = this.sessions.get(fossclawId);
+        const fullText = mapping?.accumulatedText ?? "";
+        if (mapping) mapping.accumulatedText = undefined;
+
+        if (fullText) {
+          this.wsBridge.injectToBrowsers(fossclawId, {
+            type: "assistant",
+            message: {
+              type: "message",
+              id: crypto.randomUUID(),
+              role: "assistant",
+              model: mapping?.model || "codex",
+              content: [{ type: "text", text: fullText }],
+              stop_reason: "stop",
+              usage: {
+                input_tokens: 0,
+                output_tokens: 0,
+                cache_creation_input_tokens: 0,
+                cache_read_input_tokens: 0,
+              },
+            },
+            parent_tool_use_id: null,
+          } as import("./session-types.js").BrowserIncomingMessage);
+        }
+
         const turn = params.turn as { status?: string } | undefined;
         this.wsBridge.injectToBrowsers(fossclawId, {
           type: "result",
@@ -707,7 +741,7 @@ export class CodexBridge {
         const content = msg.content as string;
         const images = msg.images as { media_type: string; data: string }[] | undefined;
         if (this.wsBridge) {
-          this.wsBridge.injectToBrowsers(fossclawId, { type: "status_change", status: null });
+          this.wsBridge.injectToBrowsers(fossclawId, { type: "status_change", status: "running" });
         }
         try {
           await this.sendMessage(fossclawId, content, images);
