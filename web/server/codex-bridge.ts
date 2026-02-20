@@ -236,9 +236,10 @@ export class CodexBridge {
 
       const data = await res.json() as {
         models?: Array<{ id: string; name?: string }>;
+        data?: Array<{ id: string; name?: string }>;
       } | Array<{ id: string; name?: string }>;
 
-      const rawModels = Array.isArray(data) ? data : (data.models || []);
+      const rawModels = Array.isArray(data) ? data : (data.models || data.data || []);
       return rawModels.map((m) => ({
         id: m.id,
         name: m.name || m.id,
