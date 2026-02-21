@@ -613,11 +613,16 @@ export class CodexBridge {
   async listModels(): Promise<CodexModel[]> {
     await this.ensureRunning();
     try {
-      const result = (await this.request("model/list", {})) as {
-        data?: Array<{ id?: string; model?: string; displayName?: string }>;
-      };
-      const models = result?.data ?? [];
-      return models.map((m) => ({
+      const result = await this.request("model/list", {});
+      type ModelEntry = { id?: string; model?: string; displayName?: string };
+      type ResultShape = { data?: ModelEntry[]; models?: ModelEntry[] } | ModelEntry[];
+      const r = result as ResultShape;
+      const raw: ModelEntry[] = Array.isArray(r)
+        ? r
+        : ((r as { data?: ModelEntry[]; models?: ModelEntry[] }).data ??
+          (r as { data?: ModelEntry[]; models?: ModelEntry[] }).models ??
+          []);
+      return raw.map((m) => ({
         id: m.model || m.id || "",
         name: m.displayName || m.model || m.id || "",
       }));
