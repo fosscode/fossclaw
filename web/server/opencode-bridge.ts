@@ -518,7 +518,7 @@ export class OpenCodeBridge {
       case "session.status": {
         const status = props.status as string | undefined;
         if (status === "busy") {
-          this.wsBridge.injectToBrowsers(sessionId, { type: "status_change", status: null });
+          this.wsBridge.injectToBrowsers(sessionId, { type: "status_change", status: "running" });
         }
         break;
       }
